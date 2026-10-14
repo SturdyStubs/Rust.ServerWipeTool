@@ -1,14 +1,16 @@
 <?php
+
 declare(strict_types=1);
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
-        if (!Schema::hasTable('ext_rust_server_wiper_wipes')) {
+        if (! Schema::hasTable('ext_rust_server_wiper_wipes')) {
             Schema::create('ext_rust_server_wiper_wipes', function (Blueprint $table): void {
                 $table->id();
                 $table->unsignedInteger('server_id');
@@ -23,7 +25,7 @@ return new class extends Migration {
                 $table->foreign('server_id')->references('id')->on('servers')->cascadeOnDelete();
             });
         }
-        if (!Schema::hasTable('ext_rust_server_wiper_maps')) {
+        if (! Schema::hasTable('ext_rust_server_wiper_maps')) {
             Schema::create('ext_rust_server_wiper_maps', function (Blueprint $table): void {
                 $table->id();
                 $table->unsignedInteger('server_id');
@@ -34,7 +36,7 @@ return new class extends Migration {
                 $table->foreign('server_id')->references('id')->on('servers')->cascadeOnDelete();
             });
         }
-        if (!Schema::hasTable('ext_rust_server_wiper_runs')) {
+        if (! Schema::hasTable('ext_rust_server_wiper_runs')) {
             Schema::create('ext_rust_server_wiper_runs', function (Blueprint $table): void {
                 $table->id();
                 $table->unsignedInteger('server_id');
@@ -55,6 +57,7 @@ return new class extends Migration {
             });
         }
     }
+
     public function down(): void
     {
         Schema::dropIfExists('ext_rust_server_wiper_runs');

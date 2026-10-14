@@ -259,6 +259,40 @@
   overflow: hidden;
   clip-path: inset(50%);
 }
+.rsw-calendar {
+  list-style: none;
+  padding: 0;
+  max-height: 500px;
+  overflow: auto;
+}
+.rsw-calendar > li {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.rsw-map-rules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 12px;
+}
+.rsw-map-rules .rsw-field {
+  width: 140px;
+  margin: 0;
+}
+.rsw-page section > details > summary {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+.rsw-page a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 @media (max-width: 640px) {
   .rsw-grid,
   .rsw-map-form {

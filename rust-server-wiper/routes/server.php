@@ -1,7 +1,10 @@
 <?php
+
 declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
+use RustServerWiper\Http\FeaturesController;
 use RustServerWiper\Http\WiperController;
+
 Route::get('/', [WiperController::class, 'index']);
 Route::get('/files', [WiperController::class, 'files']);
 Route::post('/preview', [WiperController::class, 'preview']);
@@ -12,3 +15,13 @@ Route::patch('/wipes/{wipeId}/enabled', [WiperController::class, 'toggle'])->whe
 Route::delete('/wipes/{wipeId}', [WiperController::class, 'delete'])->whereNumber('wipeId');
 Route::post('/maps', [WiperController::class, 'map']);
 Route::delete('/maps/{mapId}', [WiperController::class, 'deleteMap'])->whereNumber('mapId');
+Route::put('/maps/{mapId}', [FeaturesController::class, 'updateMap'])->whereNumber('mapId');
+Route::post('/presets', [FeaturesController::class, 'savePreset']);
+Route::put('/presets/{presetId}', [FeaturesController::class, 'updatePreset'])->whereNumber('presetId');
+Route::delete('/presets/{presetId}', [FeaturesController::class, 'deletePreset'])->whereNumber('presetId');
+Route::get('/settings', [FeaturesController::class, 'settings']);
+Route::put('/settings', [FeaturesController::class, 'saveSettings']);
+Route::post('/settings/probe', [FeaturesController::class, 'probe']);
+Route::get('/runs/{runId}/report', [FeaturesController::class, 'report'])->whereNumber('runId');
+Route::post('/runs/{runId}/restore', [FeaturesController::class, 'restore'])->whereNumber('runId');
+Route::post('/maintenance/recover', [FeaturesController::class, 'recover']);

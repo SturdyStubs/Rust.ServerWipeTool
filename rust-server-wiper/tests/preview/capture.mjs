@@ -32,6 +32,19 @@ for (const [name, width] of [
     () => document.documentElement.scrollWidth > window.innerWidth,
   );
   if (overflow) errors.push(`${name} page overflows horizontally`);
+  await page.goto("http://127.0.0.1:4174/admin");
+  await page.getByText("Rust wipe management", { exact: true }).waitFor();
+  await page.getByText("Rust test server · #1").waitFor();
+  await page.screenshot({
+    path: `tests/screenshots/${name}-admin.png`,
+    fullPage: true,
+  });
+  if (
+    await page.evaluate(
+      () => document.documentElement.scrollWidth > window.innerWidth,
+    )
+  )
+    errors.push(`${name} admin page overflows horizontally`);
   await page.close();
 }
 await browser.close();
