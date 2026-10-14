@@ -1,0 +1,28 @@
+{
+  "name": "rust-server-wiper",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@pterodactyl/sdk": "file:pterodactyl-sdk-2.0.0-beta.6.tgz",
+    "@tanstack/react-query": "^5",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "axios": "^1.20.0",
+    "jsdom": "^26",
+    "playwright": "^1.64.0",
+    "prettier": "^3.9.10",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "typescript": "^5.9",
+    "vite": "^7",
+    "vitest": "^5.0.4"
+  }
+}

@@ -1,0 +1,20 @@
+.reference-panel/
+.tools/
+test-extensions/
+rust-server-wiper/node_modules/
+rust-server-wiper/tests/screenshots/
+*.log
+
+# Original purchased addon archives stay local; track the converted extension.
+Manual/
+Blueprint/
+
+# Local configuration, caches, and generated source archives.
+.env
+.env.*
+!.env.example
+rust-server-wiper-source-*.zip
+rust-server-wiper/dist/*.map
+rust-server-wiper/dist/**/*.map
+rust-server-wiper/tests/preview/node_modules/
+rust-server-wiper/tests/preview/.vite/

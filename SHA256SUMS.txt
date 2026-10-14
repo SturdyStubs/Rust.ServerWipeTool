@@ -1,0 +1,2 @@
+1a58ff179a07507fd5ca9006e430273dc6123155fad6eeff48099a80e34dbf7b  rust-server-wiper-2.0.0.pteroext
+b65b6bb96d2c643d5da100ee21608d9df60088435e459615d497dee47402ec46  rust-server-wiper-source-2.0.0.zip

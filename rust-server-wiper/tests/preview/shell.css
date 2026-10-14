@@ -1,0 +1,63 @@
+/* Fixture shell only. Production uses the panel's own SDK components and theme. */
+:root {
+  --background: #15171c;
+  --foreground: #f1f2f4;
+  --muted-foreground: #b1b6c1;
+  --border: #363b47;
+  --input: #20242d;
+  --input-border: #464d5c;
+  --muted: #232832;
+  --primary: #9cc3f9;
+  --primary-foreground: #15171c;
+  --ring: #9cc3f9;
+  --destructive: #ff9ca6;
+  color-scheme: dark;
+  font-family: system-ui, sans-serif;
+  background: var(--background);
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+main {
+  padding: 32px;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+.fixture-label {
+  padding: 10px 32px;
+  font-size: 12px;
+  color: #b1b6c1;
+  background: #20242d;
+}
+.fixture-button {
+  color: #15171c;
+  background: #9cc3f9;
+  border: 0;
+  border-radius: 6px;
+  padding: 10px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.fixture-secondary {
+  background: #303642;
+  color: #f1f2f4;
+}
+.fixture-danger {
+  color: #ff9ca6;
+  background: #3d242a;
+}
+button:disabled {
+  opacity: 0.5;
+}
+@media (max-width: 640px) {
+  main {
+    padding: 20px 16px;
+  }
+}
