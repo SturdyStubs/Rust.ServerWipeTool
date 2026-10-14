@@ -1,6 +1,9 @@
 <?php
+
 declare(strict_types=1);
+
 namespace RustServerWiper\Services;
+
 use InvalidArgumentException;
 
 final class Paths
@@ -14,13 +17,14 @@ final class Paths
         $parts = explode('/', substr($path, 1));
         foreach ($parts as $i => $part) {
             if ($part === '' || $part === '.' || $part === '..' || str_contains($part, '?') || str_contains($part, '[') ||
-                (str_contains($part, '*') && (!$wildcards || $i !== count($parts) - 1))) {
+                (str_contains($part, '*') && (! $wildcards || $i !== count($parts) - 1))) {
                 throw new InvalidArgumentException('Paths cannot contain traversal or wildcards in directories.');
             }
         }
         if (count($parts) < 2 || end($parts) === '*') {
             throw new InvalidArgumentException('Root entries and bare * deletion patterns are not allowed.');
         }
+
         return $path;
     }
 
@@ -32,38 +36,61 @@ final class Paths
             $root = self::normalize($payload['identity_path'], false);
             $paths = [...$paths, "$root/player.blueprints.*.db", "$root/player.blueprints.*.db-journal", "$root/player.blueprints.*.db-wal", "$root/player.blueprints.*.db-shm"];
         }
+
         return array_values(array_unique(array_map(self::normalize(...), $paths)));
     }
 
     /** Resolve before deletion, batch by directory, never traverse a symlink. */
     public static function resolve(array $patterns, callable $list): array
     {
-        $directories = []; $result = [];
+        $directories = [];
+        $result = [];
         foreach ($patterns as $pattern) {
             $pattern = self::normalize($pattern);
-            $root = dirname($pattern); $name = basename($pattern);
+            $root = dirname($pattern);
+            $name = basename($pattern);
             // Check each directory component so an explicit path cannot cross a symlink.
             $parent = '/';
             foreach (explode('/', trim($root, '/')) as $part) {
                 $entries = $directories[$parent] ??= $list($parent);
                 $entry = null;
-                foreach ($entries as $item) if (($item['name'] ?? '') === $part) { $entry = $item; break; }
-                if (!$entry) continue 2; // Missing directory means nothing to remove.
-                if (($entry['symlink'] ?? false) || ($entry['file'] ?? false)) throw new InvalidArgumentException("Unsafe directory: $parent$part");
+                foreach ($entries as $item) {
+                    if (($item['name'] ?? '') === $part) {
+                        $entry = $item;
+                        break;
+                    }
+                }
+                if (! $entry) {
+                    continue 2;
+                } // Missing directory means nothing to remove.
+                if (($entry['symlink'] ?? false) || ($entry['file'] ?? false)) {
+                    throw new InvalidArgumentException("Unsafe directory: $parent$part");
+                }
                 $parent = rtrim($parent, '/').'/'.$part;
             }
             $entries = $directories[$root] ??= $list($root);
             $regex = '~^'.str_replace('\\*', '.*', preg_quote($name, '~')).'$~D';
             foreach ($entries as $entry) {
                 $entryName = $entry['name'] ?? '';
-                if ($entryName === '' || str_contains($entryName, '/') || str_contains($entryName, '\\') || in_array($entryName, ['.', '..'], true)) continue;
-                if (!preg_match($regex, $entryName)) continue;
-                if ($entry['symlink'] ?? false) throw new InvalidArgumentException("Refusing to delete symlink: $root/$entryName");
-                if (str_contains($name, '*') && !($entry['file'] ?? false)) continue;
+                if ($entryName === '' || str_contains($entryName, '/') || str_contains($entryName, '\\') || in_array($entryName, ['.', '..'], true)) {
+                    continue;
+                }
+                if (! preg_match($regex, $entryName)) {
+                    continue;
+                }
+                if ($entry['symlink'] ?? false) {
+                    throw new InvalidArgumentException("Refusing to delete symlink: $root/$entryName");
+                }
+                if (str_contains($name, '*') && ! ($entry['file'] ?? false)) {
+                    continue;
+                }
                 $result[$root][$entryName] = $entryName;
-                if (array_sum(array_map('count', $result)) > 5000) throw new InvalidArgumentException('Deletion exceeds 5,000 entries. Narrow the file patterns.');
+                if (array_sum(array_map('count', $result)) > 5000) {
+                    throw new InvalidArgumentException('Deletion exceeds 5,000 entries. Narrow the file patterns.');
+                }
             }
         }
+
         return array_map(array_values(...), $result);
     }
 }

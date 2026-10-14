@@ -8,11 +8,13 @@ import {
 } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import WipesScreen from "../src/client/WipesScreen";
+import SettingsPanel from "../src/client/SettingsPanel";
 import { addFile, localInput } from "../src/client/types";
 
 const mock = vi.hoisted(() => ({
   get: vi.fn(),
   post: vi.fn(),
+  put: vi.fn(),
   patch: vi.fn(),
   delete: vi.fn(),
   request: vi.fn(),
@@ -55,6 +57,7 @@ beforeEach(() => {
     },
   });
   mock.request.mockResolvedValue({ data: {} });
+  mock.put.mockResolvedValue({ data: {} });
 });
 afterEach(cleanup);
 function mount() {
@@ -173,5 +176,78 @@ it("editing preserves the selected timezone instead of browser timezone", () => 
 it("file browser selection is deduplicated", () => {
   expect(addFile("/server/rust/a.sav", "/server/rust/a.sav")).toBe(
     "/server/rust/a.sav",
+  );
+});
+it("full preset exposes map files and blueprint deletion for review", async () => {
+  await edit();
+  fireEvent.change(screen.getByLabelText("Apply preset"), {
+    target: { value: "full" },
+  });
+  expect(
+    (screen.getByLabelText(/Files and patterns/) as HTMLTextAreaElement).value,
+  ).toContain("/server/rust/*.map");
+  expect(
+    (screen.getByLabelText("Wipe blueprints") as HTMLInputElement).checked,
+  ).toBe(true);
+});
+it("player-aware controls default to cancellation at the deadline", async () => {
+  await edit();
+  fireEvent.click(screen.getByLabelText("Wait until the server is empty"));
+  expect(
+    (screen.getByLabelText("At the deadline") as HTMLSelectElement).value,
+  ).toBe("cancel");
+  expect(
+    (
+      screen.getByLabelText(
+        "If player count is unavailable",
+      ) as HTMLSelectElement
+    ).value,
+  ).toBe("defer");
+});
+it("read-only users see reports without execution or configuration controls", async () => {
+  mock.get.mockResolvedValue({
+    data: {
+      ...overview,
+      permissions: {
+        view: true,
+        schedule: false,
+        execute: false,
+        restore: false,
+        configure: false,
+      },
+    },
+  });
+  mount();
+  await screen.findByText(
+    "No wipes scheduled. Create a wipe to choose files and a time.",
+  );
+  expect(
+    (screen.getByRole("button", { name: "Create wipe" }) as HTMLButtonElement)
+      .disabled,
+  ).toBe(true);
+  expect(
+    screen.queryByText("Discord notifications and WebRCON settings"),
+  ).toBeNull();
+});
+it("saved secrets stay blank and blank inputs preserve them on save", async () => {
+  mock.get.mockResolvedValue({
+    data: { options: {}, discord_configured: true, rcon_configured: true },
+  });
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  render(
+    <QueryClientProvider client={client}>
+      <SettingsPanel base="/fixture" />
+    </QueryClientProvider>,
+  );
+  const password = await screen.findByLabelText("RCON password override");
+  expect((password as HTMLInputElement).value).toBe("");
+  fireEvent.click(screen.getByRole("button", { name: "Save settings" }));
+  await waitFor(() =>
+    expect(mock.put).toHaveBeenCalledWith(
+      "/fixture/settings",
+      expect.objectContaining({ discord_webhook: null, rcon_password: null }),
+    ),
   );
 });

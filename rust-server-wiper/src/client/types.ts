@@ -10,6 +10,15 @@ export interface Payload {
   blueprints: boolean;
   identity_path: string;
   commands: { minutes: number; command: string }[];
+  backup?: boolean;
+  backup_timeout?: number;
+  readiness?: "none" | "wings" | "rcon";
+  map_mode?: "random" | "ordered" | "weighted";
+  exclude_recent?: number;
+  wait_players?: boolean;
+  max_deferral?: number;
+  deadline_action?: "cancel" | "proceed";
+  unknown_players?: "cancel" | "defer" | "proceed";
 }
 export interface Draft {
   label: string;
@@ -27,6 +36,8 @@ export interface WipeMap {
   id: number;
   name: string;
   url: string;
+  weight?: number;
+  position?: number;
 }
 export interface Run {
   id: number;
@@ -35,7 +46,16 @@ export interface Run {
   due_at: string;
   status: string;
   message: string | null;
-  result: { deleted?: string[]; environment?: Record<string, string> } | null;
+  result: {
+    deleted?: string[];
+    environment?: Record<string, string>;
+    readiness?: string;
+    map_url?: string | null;
+    rotation_fallback?: boolean;
+  } | null;
+  backup_uuid?: string | null;
+  phase?: string;
+  created_by?: number | null;
 }
 export interface Overview {
   environment: Record<string, string>;
@@ -43,6 +63,34 @@ export interface Overview {
   wipes: Wipe[];
   maps: WipeMap[];
   runs: Run[];
+  permissions?: Record<string, boolean>;
+  identity?: {
+    path: string | null;
+    source: string | null;
+    message: string;
+    patterns?: string[];
+  };
+  presets?: { id: number; name: string; payload: Payload }[];
+  calendar?: {
+    events: {
+      wipe_id: number;
+      label: string;
+      at: string;
+      timezone: string;
+      conflict: boolean;
+    }[];
+    notes: { wipe_id: number; message: string }[];
+    skipped?: {
+      wipe_id: number;
+      label: string;
+      local: string;
+      rule: string;
+      reason: string;
+      timezone: string;
+    }[];
+  };
+  maintenance?: { operation: string; expires_at: string } | null;
+  restores?: { id: number; status: string; message: string }[];
 }
 export interface Preview {
   files: string[];
@@ -74,6 +122,15 @@ export function blankDraft(): Draft {
       blueprints: false,
       identity_path: "/server/rust",
       commands: [],
+      backup: true,
+      backup_timeout: 300,
+      readiness: "wings",
+      map_mode: "random",
+      exclude_recent: 0,
+      wait_players: false,
+      max_deferral: 60,
+      deadline_action: "cancel",
+      unknown_players: "defer",
     },
   };
 }

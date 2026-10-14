@@ -3,6 +3,7 @@ import "./styles.css";
 
 export default definePterodactylExtension({
   setup({ screens }) {
+    screens.register("admin-wipes", () => import("./AdminScreen"));
     screens.register("wipes", () => import("./WipesScreen"), {
       visible: ({ server }) =>
         !!server &&

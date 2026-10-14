@@ -9,6 +9,39 @@ const data = {
     WORLD_SIZE: "3500",
   },
   timezones: ["UTC", "America/Phoenix", "Europe/London"],
+  permissions: {
+    view: true,
+    schedule: true,
+    execute: true,
+    restore: true,
+    configure: true,
+  },
+  identity: {
+    path: "/server/rust",
+    source: "startup server.identity",
+    message: "Detected from startup.",
+  },
+  presets: [
+    {
+      id: 1,
+      name: "Saved map wipe",
+      server_id: 1,
+      payload: { ...draft.payload, files: "/server/rust/*.sav" },
+    },
+  ],
+  calendar: {
+    events: [
+      {
+        wipe_id: 1,
+        label: "Monthly full wipe",
+        at: "2030-11-07T21:00:00Z",
+        timezone: "America/Phoenix",
+        conflict: false,
+      },
+    ],
+    notes: [],
+    skipped: [],
+  },
   wipes: [
     {
       ...draft,
@@ -32,10 +65,14 @@ const data = {
       id: 1,
       label: "Monthly full wipe",
       due_at: "2030-10-03T21:00:00Z",
+      server_id: 1,
       timezone: "America/Phoenix",
       status: "completed",
       message: "Wipe completed; start signal sent.",
       result: { deleted: ["/server/rust/world.sav"] },
+      backup_uuid: "fixture-backup-uuid",
+      phase: "finished",
+      created_by: 1,
     },
   ],
 };
@@ -47,7 +84,22 @@ export const http = {
   get: async (url: string) => ({
     data: url.endsWith("/files")
       ? { files: [{ name: "server", file: false, symlink: false }] }
-      : data,
+      : url.endsWith("/settings")
+        ? { options: {}, discord_configured: false, rcon_configured: false }
+        : url.startsWith("/api/admin")
+          ? {
+              ...data,
+              servers: [
+                {
+                  id: 1,
+                  name: "Rust test server",
+                  identity: { path: "/server/rust" },
+                },
+              ],
+              page: 1,
+              has_more: false,
+            }
+          : data,
   }),
   post: async () => ({
     data: {
@@ -57,6 +109,7 @@ export const http = {
     },
   }),
   patch: async () => ({ data: {} }),
+  put: async () => ({ data: {} }),
   delete: async () => ({ data: {} }),
   request: async () => ({ data: {} }),
 };
@@ -88,3 +141,4 @@ export const Spinner = () => <p>Loading…</p>;
 export const ServerContentBlock = ({ children }: { children: ReactNode }) => (
   <main>{children}</main>
 );
+export const PageContentBlock = ServerContentBlock;

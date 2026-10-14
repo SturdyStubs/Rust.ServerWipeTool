@@ -1,8 +1,12 @@
 <?php
+
 declare(strict_types=1);
+
 namespace RustServerWiper\Services;
-use Pterodactyl\Services\Extensions\ExtensionRepository;
+
 use Pterodactyl\Models\Extension;
+use Pterodactyl\Services\Extensions\ExtensionRepository;
+
 final class Availability
 {
     public static function enabled(): bool

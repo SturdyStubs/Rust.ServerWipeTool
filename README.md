@@ -2,7 +2,9 @@
 
 The converted Pterodactyl 2.0 extension is in [rust-server-wiper](rust-server-wiper/README.md).
 
-Installable package: **rust-server-wiper-2.0.0.pteroext**.
+Baseline package: **rust-server-wiper-2.0.0.pteroext**.
+
+Development package: **rust-server-wiper-2.1.0-beta.1.pteroext**. All twelve planned features are implemented; read [the beta feature and upgrade guide](rust-server-wiper/FEATURES-2.1.md) before installation. Live Rust/Wings staging checks remain open.
 
 Read the extension README before installation: it covers queue configuration, disabling the old runner, importing legacy data paused, permissions, and first-wipe checks.
 

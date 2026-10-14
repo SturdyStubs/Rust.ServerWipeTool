@@ -1,4 +1,6 @@
-# Rust Server Wiper for Pterodactyl 2.0
+# Rust Server Wiper 2.1.0-beta.1
+
+Read [FEATURES-2.1.md](FEATURES-2.1.md) for the new features, permissions, defaults and upgrade requirements. This is a beta pending live server verification.
 
 Native extension converted from the supplied UndercoverNL Rust Server Wiper addon. No panel source patches, Blueprint installation, or panel frontend rebuild is required. Original files in `Manual` and `Blueprint` are preserved.
 
@@ -7,13 +9,13 @@ Native extension converted from the supplied UndercoverNL Rust Server Wiper addo
 Tested against **Pterodactyl 2.0.0-beta.1**, commit `65913c6aac5367a35f48b4448f027354b9b2a577`. Its bundled SDK is **2.0.0-beta.6**. Later beta versions are not covered by the test results; run the panel's extension doctor before upgrading. Manifest requirements reject Panel 1.x.
 
 1. Disable the old auto-wiper scheduler/job before enabling this extension. Remove any separate cron invocation of `p:server:wipe` and the old `RustWipeCommand` scheduler registration if they survived the panel upgrade. Do not run both implementations.
-2. In the panel `.env`, set the queue reservation to longer than the wipe worker's 600-second timeout. For the standard Redis queue:
+2. In the panel `.env`, set the queue reservation to longer than the wipe worker's 1,200-second timeout. For the standard Redis queue:
 
    ```dotenv
-   REDIS_QUEUE_RETRY_AFTER=660
+   REDIS_QUEUE_RETRY_AFTER=1260
    ```
 
-   For a database queue use `DB_QUEUE_RETRY_AFTER=660`; for Beanstalkd use `BEANSTALKD_QUEUE_RETRY_AFTER=660`. For SQS set a visibility timeout above 600 seconds. The web app, scheduler and workers must share a persistent cache with atomic locks, normally Redis. `array` cache is for tests only. Keep the panel's normal minute scheduler and `standard` queue worker running.
+   For a database queue use `DB_QUEUE_RETRY_AFTER=1260`; for Beanstalkd use `BEANSTALKD_QUEUE_RETRY_AFTER=1260`. For SQS set a visibility timeout above 1,200 seconds. The web app, scheduler and workers must share a persistent cache with atomic locks, normally Redis. `array` cache is for tests only. Keep the panel's normal minute scheduler and `standard` queue worker running.
 
    ```sh
    cd /var/www/pterodactyl
@@ -21,10 +23,10 @@ Tested against **Pterodactyl 2.0.0-beta.1**, commit `65913c6aac5367a35f48b4448f0
    php artisan queue:restart
    ```
 
-3. Upload `rust-server-wiper-2.0.0.pteroext` in **Admin → Extensions → Install** and select **Enable**. Alternatively:
+3. Upload `rust-server-wiper-2.1.0-beta.1.pteroext` in **Admin → Extensions → Install** and select **Enable**. Alternatively:
 
    ```sh
-   php artisan p:extension:install /path/to/rust-server-wiper-2.0.0.pteroext --enable
+   php artisan p:extension:install /path/to/rust-server-wiper-2.1.0-beta.1.pteroext --enable
    chown -R www-data:www-data extensions public/assets/extensions
    ```
 
@@ -68,7 +70,7 @@ The scheduler persists each occurrence, advances its next due time atomically, a
 
 The worker validates paths and egg variables before stopping. It sends a graceful stop and checks Wings every two seconds for up to 180 seconds. It deletes nothing if the server does not stop. It checks the stopped state again before each deletion batch, writes startup values, syncs Wings, and sends start after successful deletion. Completion means the start signal was accepted, not that Rust finished booting.
 
-Wipes more than 15 minutes late, including jobs delayed in the queue, are marked **missed**. After downtime, a recurring schedule advances to its next future occurrence instead of wiping unexpectedly. Failed or interrupted runs are **never automatically replayed**. History shows the latest 50 records; the database retains all records. Check the server and make a new reviewed immediate wipe if appropriate. A failed destructive operation may leave partial changes; there is no automatic rollback or backup. Filesystem changes and panel startup/power operations use the panel's native actions and activity logging where provided.
+Wipes more than 15 minutes late, including jobs delayed in the queue, are marked **missed**. After downtime, a recurring schedule advances to its next future occurrence instead of wiping unexpectedly. Failed or interrupted runs are **never automatically replayed**. History shows the latest 50 records; the database retains all records. Check the server and make a new reviewed immediate wipe if appropriate. A failed destructive operation may leave partial changes; there is no automatic rollback. Optional confirmed pre-wipe backups are described in FEATURES-2.1.md. Filesystem changes and panel startup/power operations use the panel's native actions and activity logging where provided.
 
 Disabling the extension stops future scheduling and cancels jobs when they next check availability. If disabled after a server stop, the worker leaves the server stopped without deleting. A wipe already deleting files finishes its sequence to keep the server in a known state. A concurrent manual power action can still race between a stopped-state check and a Wings request; avoid manual starts during a wipe. Two different enabled schedules due together are serialized, so review overlapping schedules.
 
@@ -92,7 +94,7 @@ Run package checks with the panel:
 
 ```sh
 php artisan p:extension:doctor /path/to/rust-server-wiper
-php artisan p:extension:pack /path/to/rust-server-wiper --output=/path/to/rust-server-wiper-2.0.0.pteroext
+php artisan p:extension:pack /path/to/rust-server-wiper --output=/path/to/rust-server-wiper-2.1.0-beta.1.pteroext
 ```
 
 The packaged extension includes runtime PHP, migrations, routes and built assets. You do not need Node or Composer installation to install the package. No live Rust server was used for local verification. Test the first wipe against a disposable Rust server and verify the identity path and egg before enabling production schedules.

@@ -25,6 +25,9 @@ import {
   type Preview,
   type Wipe,
 } from "./types";
+import WipeOptions from "./WipeOptions";
+import SettingsPanel from "./SettingsPanel";
+import MapRules from "./MapRules";
 
 const weekdays = [
   "Monday",
@@ -112,6 +115,8 @@ export default function WipesScreen() {
   const [mapName, setMapName] = useState("");
   const [mapUrl, setMapUrl] = useState("");
   const editor = useRef<HTMLDivElement>(null);
+  const requestId = useRef(crypto.randomUUID());
+  const restoreIds = useRef<Record<number, string>>({});
   const listing = useQuery({
     queryKey: ["rust-server-wiper-files", identifier, directory],
     enabled: browse,
@@ -126,6 +131,7 @@ export default function WipesScreen() {
   useEffect(() => {
     setPreview(null);
     setConfirmed(false);
+    requestId.current = crypto.randomUUID();
   }, [draft]);
 
   async function action(work: () => Promise<unknown>, message?: string) {
@@ -183,9 +189,14 @@ export default function WipesScreen() {
       setShowEditor(false);
     }, "Wipe schedule saved.");
   }
-  const active = overview.data?.runs.some((r) =>
-    ["queued", "running"].includes(r.status),
-  );
+  const active =
+    overview.data?.runs.some((r) =>
+      ["queued", "running", "deferred"].includes(r.status),
+    ) ||
+    overview.data?.restores?.some((r) =>
+      ["queued", "stopping", "restoring", "restored"].includes(r.status),
+    );
+  const can = (key: string) => overview.data?.permissions?.[key] !== false;
   const custom = !!draft.payload.level || draft.payload.random_level;
 
   return (
@@ -199,7 +210,10 @@ export default function WipesScreen() {
               removed.
             </p>
           </div>
-          <Button onClick={() => open()} disabled={busy}>
+          <Button
+            onClick={() => open()}
+            disabled={busy || (!can("schedule") && !can("execute"))}
+          >
             Create wipe
           </Button>
         </div>
@@ -215,6 +229,40 @@ export default function WipesScreen() {
           </p>
         )}
         {overview.isPending && <Spinner />}
+        {overview.data?.maintenance && (
+          <div role="status" className="rsw-notice">
+            <strong>
+              Maintenance active: {overview.data.maintenance.operation}
+            </strong>
+            <p>
+              Power and supported file changes are blocked while the operation
+              runs. Inspect the server before releasing an expired operation.
+            </p>
+            {can("configure") && (
+              <Button
+                size="small"
+                isSecondary
+                disabled={busy}
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      "Release expired maintenance after inspecting the server?",
+                    )
+                  )
+                    void action(
+                      () =>
+                        http.post(`${base}/maintenance/recover`, {
+                          confirm: true,
+                        }),
+                      "Expired maintenance released.",
+                    );
+                }}
+              >
+                Recover expired maintenance
+              </Button>
+            )}
+          </div>
+        )}
         <section aria-labelledby="rsw-schedules">
           <h2 id="rsw-schedules">Scheduled wipes</h2>
           {overview.data && overview.data.wipes.length === 0 && (
@@ -263,14 +311,16 @@ export default function WipesScreen() {
                           size="small"
                           isSecondary
                           onClick={() => open(wipe)}
-                          disabled={busy}
+                          disabled={
+                            busy || (!can("schedule") && !can("execute"))
+                          }
                         >
                           Edit
                         </Button>
                         <Button
                           size="small"
                           isSecondary
-                          disabled={busy}
+                          disabled={busy || !can("schedule")}
                           onClick={() =>
                             void action(() =>
                               http.patch(`${base}/wipes/${wipe.id}/enabled`, {
@@ -285,7 +335,7 @@ export default function WipesScreen() {
                           size="small"
                           color="red"
                           isSecondary
-                          disabled={busy}
+                          disabled={busy || !can("schedule")}
                           onClick={() => {
                             if (
                               window.confirm(`Delete schedule “${wipe.label}”?`)
@@ -359,6 +409,13 @@ export default function WipesScreen() {
                     </datalist>
                   </Field>
                 </div>
+                <WipeOptions
+                  base={base}
+                  draft={draft}
+                  setDraft={setDraft}
+                  overview={overview.data}
+                  action={action}
+                />
                 <h3>Files to remove</h3>
                 <p>
                   Choose the files that make up your wipe. Map files are only
@@ -754,7 +811,11 @@ export default function WipesScreen() {
                   Add command
                 </Button>
                 <div className="rsw-form-actions">
-                  <Button type="submit" isLoading={busy}>
+                  <Button
+                    type="submit"
+                    isLoading={busy}
+                    disabled={!can("schedule")}
+                  >
                     Save schedule
                   </Button>
                   <Button
@@ -796,12 +857,19 @@ export default function WipesScreen() {
                     />
                     <Button
                       color="red"
-                      disabled={!confirmed || busy || !!active}
+                      disabled={
+                        !confirmed ||
+                        busy ||
+                        !!active ||
+                        !can("execute") ||
+                        !!overview.data?.maintenance
+                      }
                       onClick={() =>
                         void action(async () => {
                           await http.post(`${base}/run`, {
                             ...draft,
                             confirm: true,
+                            request_uuid: requestId.current,
                           });
                           setShowEditor(false);
                         }, "Wipe queued. Follow its progress in run history.")
@@ -831,12 +899,18 @@ export default function WipesScreen() {
                 <div>
                   <strong>{map.name}</strong>
                   <small>{map.url}</small>
+                  <MapRules
+                    map={map}
+                    base={base}
+                    disabled={busy || !can("schedule")}
+                    action={action}
+                  />
                 </div>
                 <Button
                   isSecondary
                   size="small"
                   color="red"
-                  disabled={busy}
+                  disabled={busy || !can("schedule")}
                   onClick={() => {
                     if (
                       window.confirm(`Remove “${map.name}” from map rotation?`)
@@ -883,12 +957,56 @@ export default function WipesScreen() {
                 onChange={(e) => setMapUrl(e.target.value)}
               />
             </Field>
-            <Button type="submit" disabled={busy}>
+            <Button type="submit" disabled={busy || !can("schedule")}>
               Add map
             </Button>
           </form>
         </section>
 
+        {overview.data?.calendar && (
+          <section>
+            <h2>Upcoming wipes</h2>
+            <p>
+              Dates use each schedule's timezone. Wipes less than 20 minutes
+              apart are flagged for review.
+            </p>
+            {overview.data.calendar.events.length === 0 && (
+              <p>No upcoming wipes.</p>
+            )}
+            <ul className="rsw-calendar">
+              {overview.data.calendar.events.map((event) => (
+                <li key={`${event.wipe_id}-${event.at}`}>
+                  <strong>{event.label}</strong>
+                  <span>
+                    {date(event.at, event.timezone)} · {event.timezone}
+                  </span>
+                  {event.conflict && (
+                    <strong className="rsw-failed">
+                      Overlaps another wipe
+                    </strong>
+                  )}
+                </li>
+              ))}
+            </ul>
+            {overview.data.calendar.notes.map((note) => (
+              <small key={note.wipe_id}>{note.message}</small>
+            ))}
+            {!!overview.data.calendar.skipped?.length && (
+              <details>
+                <summary>Skipped dates and months</summary>
+                <ul>
+                  {overview.data.calendar.skipped.map((skip) => (
+                    <li key={`${skip.wipe_id}-${skip.local}-${skip.rule}`}>
+                      {skip.label}: {skip.local} · {skip.timezone} ·{" "}
+                      {skip.reason}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          </section>
+        )}
+        {can("configure") && <SettingsPanel base={base} />}
         <section aria-labelledby="rsw-history">
           <h2 id="rsw-history">Run history</h2>
           <p>
@@ -924,6 +1042,70 @@ export default function WipesScreen() {
                         {run.status}
                       </strong>
                       <small>{run.message}</small>
+                      {run.result?.readiness && (
+                        <small>
+                          Startup:{" "}
+                          {(
+                            {
+                              rust_ready: "Rust ready",
+                              process_running: "Wings process running",
+                              start_accepted: "Start signal accepted",
+                              timed_out: "Readiness timed out",
+                            } as Record<string, string>
+                          )[run.result.readiness] ?? run.result.readiness}
+                        </small>
+                      )}
+                      {run.result?.rotation_fallback && (
+                        <small>
+                          Map pool was too small for the recent-map exclusion;
+                          fallback applied.
+                        </small>
+                      )}
+                      {run.phase && (
+                        <small>
+                          Phase: {run.phase}
+                          {run.created_by
+                            ? ` · Requested by user #${run.created_by}`
+                            : " · Scheduled/system run"}
+                        </small>
+                      )}
+                      {run.backup_uuid && (
+                        <small>Backup: {run.backup_uuid}</small>
+                      )}
+                      <div className="rsw-actions">
+                        <a href={`${base}/runs/${run.id}/report`} download>
+                          Download report
+                        </a>
+                        {run.backup_uuid && can("restore") && (
+                          <Button
+                            color="red"
+                            size="small"
+                            isSecondary
+                            disabled={
+                              busy || !!active || !!overview.data?.maintenance
+                            }
+                            onClick={() => {
+                              if (
+                                window.confirm(
+                                  "Restore the full pre-wipe backup? This replaces ALL current server files and restores previous startup values. The server will remain stopped.",
+                                )
+                              )
+                                void action(async () => {
+                                  const id = (restoreIds.current[run.id] ??=
+                                    crypto.randomUUID());
+                                  const response = await http.post(
+                                    `${base}/runs/${run.id}/restore`,
+                                    { confirm: true, request_uuid: id },
+                                  );
+                                  delete restoreIds.current[run.id];
+                                  return response;
+                                }, "Restore queued.");
+                            }}
+                          >
+                            Restore full backup
+                          </Button>
+                        )}
+                      </div>
                       {run.result && (
                         <details>
                           <summary>View files and startup values</summary>
@@ -952,6 +1134,21 @@ export default function WipesScreen() {
             </table>
           </div>
         </section>
+        {!!overview.data?.restores?.length && (
+          <section>
+            <h2>Restore history</h2>
+            <ul>
+              {overview.data.restores.map((restore) => (
+                <li key={restore.id}>
+                  <strong>
+                    Restore #{restore.id}: {restore.status}
+                  </strong>
+                  <p>{restore.message}</p>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </div>
     </ServerContentBlock>
   );
