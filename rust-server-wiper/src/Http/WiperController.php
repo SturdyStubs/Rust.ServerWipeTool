@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace RustServerWiper\Http;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +22,7 @@ use RustServerWiper\Services\Identity;
 use RustServerWiper\Services\Maintenance;
 use RustServerWiper\Services\Paths;
 use RustServerWiper\Services\Permissions;
+use RustServerWiper\Services\Recurrence;
 use RustServerWiper\Services\WipeEngine;
 use Throwable;
 
@@ -50,6 +52,7 @@ final class WiperController
         $this->authorize($request, $server, 'view');
 
         return new JsonResponse([
+            'server_now' => now('UTC')->toAtomString(),
             'environment' => array_intersect_key($this->gateway->environment($server->id), array_flip(['HOSTNAME', 'DESCRIPTION', 'WORLD_SEED', 'WORLD_SIZE', 'MAP_URL'])), 'timezones' => \DateTimeZone::listIdentifiers(\DateTimeZone::ALL),
             'wipes' => Wipe::query()->where('server_id', $server->id)->orderBy('next_run_at')->get(),
             'maps' => WipeMap::query()->where('server_id', $server->id)->orderBy('name')->get(),
@@ -97,6 +100,25 @@ final class WiperController
         if (! $data['enabled']) {
             Run::query()->where('wipe_id', $wipeId)->whereIn('status', ['queued', 'deferred'])->update(['status' => 'cancelled', 'finished_at' => now('UTC'), 'message' => 'Schedule paused.']);
         }
+
+        return new JsonResponse($wipe->fresh());
+    }
+
+    public function skip(Request $request, Server $server, int $wipeId): JsonResponse
+    {
+        $this->authorize($request, $server);
+        $request->validate(['expected_at' => 'required|date']);
+        $wipe = $this->wipe($server, $wipeId);
+        DB::transaction(function () use ($wipe, $request): void {
+            $current = Wipe::query()->whereKey($wipe->id)->lockForUpdate()->firstOrFail();
+            abort_unless($current->enabled && $current->next_run_at && $current->next_run_at->isFuture(), 409, 'Only a future, enabled occurrence can be skipped.');
+            abort_unless($current->next_run_at->equalTo(CarbonImmutable::parse($request->input('expected_at'))), 409, 'The next wipe changed. Reload before skipping.');
+            abort_if(Run::query()->where('wipe_id', $wipe->id)->whereIn('status', ['queued', 'running', 'deferred'])->exists(), 409, 'This schedule already has an active run.');
+            Run::query()->create(['server_id' => $current->server_id, 'wipe_id' => $current->id, 'label' => $current->label, 'payload' => $current->payload, 'timezone' => $current->timezone,
+                'due_at' => $current->next_run_at, 'status' => 'skipped', 'message' => 'Skipped by an operator before execution.', 'created_by' => $request->user()->id, 'finished_at' => now('UTC')]);
+            $next = Recurrence::next($current->repeat, $current->timezone, \DateTimeImmutable::createFromInterface($current->next_run_at));
+            $current->update(['next_run_at' => $next, 'updated_by' => $request->user()->id]);
+        });
 
         return new JsonResponse($wipe->fresh());
     }

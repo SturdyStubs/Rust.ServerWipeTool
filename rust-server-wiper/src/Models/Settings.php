@@ -12,9 +12,9 @@ final class Settings extends Model
 
     protected $guarded = ['id'];
 
-    protected $hidden = ['discord_webhook', 'rcon_password'];
+    protected $hidden = ['discord_webhook', 'rcon_password', 'announcement_config'];
 
-    protected $casts = ['server_id' => 'integer', 'options' => 'array', 'discord_webhook' => 'encrypted', 'rcon_password' => 'encrypted'];
+    protected $casts = ['server_id' => 'integer', 'options' => 'array', 'discord_webhook' => 'encrypted', 'rcon_password' => 'encrypted', 'announcement_config' => 'encrypted:array'];
 
     public static function forServer(int $id): self
     {

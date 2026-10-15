@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button, http, httpErrorToHuman } from "@pterodactyl/sdk";
+import AnnouncementsPanel from "./AnnouncementsPanel";
 type Config = {
   options: {
     rcon_port?: number;
@@ -21,9 +22,7 @@ type Config = {
 };
 function SettingsForm({ initial, base }: { initial: Config; base: string }) {
   const [options, setOptions] = useState(initial.options ?? {});
-  const [webhook, setWebhook] = useState("");
   const [password, setPassword] = useState("");
-  const [clearDiscord, setClearDiscord] = useState(false);
   const [clearRcon, setClearRcon] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -34,12 +33,11 @@ function SettingsForm({ initial, base }: { initial: Config; base: string }) {
     try {
       await http.put(`${base}/settings`, {
         options,
-        discord_webhook: webhook || null,
+        discord_webhook: null,
         rcon_password: password || null,
-        clear_discord: clearDiscord,
+        clear_discord: false,
         clear_rcon: clearRcon,
       });
-      setWebhook("");
       setPassword("");
       setMessage("Settings saved. Secret fields are cleared from this form.");
     } catch (e) {
@@ -57,118 +55,9 @@ function SettingsForm({ initial, base }: { initial: Config; base: string }) {
     >
       <fieldset disabled={busy}>
         <p>
-          Blank secret fields keep saved values. Passwords and webhook URLs are
-          encrypted and never returned to this form.
+          A blank password keeps the saved override. Passwords are encrypted and
+          never returned to this form.
         </p>
-        <h3>Discord announcements</h3>
-        <div className="rsw-grid">
-          <label className="rsw-field">
-            <span>Discord webhook URL</span>
-            <input
-              type="password"
-              autoComplete="new-password"
-              value={webhook}
-              onChange={(e) => setWebhook(e.target.value)}
-              placeholder={
-                initial.discord_configured
-                  ? "Webhook saved"
-                  : "https://discord.com/api/webhooks/…"
-              }
-            />
-          </label>
-          <label className="rsw-field">
-            <span>Optional Discord role ID</span>
-            <input
-              value={options.discord_role ?? ""}
-              onChange={(e) =>
-                setOptions({
-                  ...options,
-                  discord_role: e.target.value || undefined,
-                })
-              }
-            />
-          </label>
-          <label className="rsw-field">
-            <span>Announcement minutes before wipe</span>
-            <input
-              type="number"
-              min={1}
-              max={1440}
-              value={options.discord_minutes ?? 30}
-              onChange={(e) =>
-                setOptions({
-                  ...options,
-                  discord_minutes: Number(e.target.value),
-                })
-              }
-            />
-          </label>
-          <label className="rsw-field">
-            <span>Notification template</span>
-            <input
-              maxLength={1500}
-              value={options.discord_template ?? "{label}: {event}. {message}"}
-              onChange={(e) =>
-                setOptions({ ...options, discord_template: e.target.value })
-              }
-            />
-            <small>
-              Tokens: {"{label}, {event}, {message}, {time}, {server}"}
-            </small>
-          </label>
-        </div>
-        <div className="rsw-actions">
-          {["upcoming", "completed", "ready", "failed"].map((event) => (
-            <label className="rsw-check" key={event}>
-              <input
-                type="checkbox"
-                checked={(
-                  options.discord_events ?? [
-                    "upcoming",
-                    "completed",
-                    "ready",
-                    "failed",
-                  ]
-                ).includes(event)}
-                onChange={(e) =>
-                  setOptions({
-                    ...options,
-                    discord_events: e.target.checked
-                      ? [
-                          ...new Set([
-                            ...(options.discord_events ?? [
-                              "upcoming",
-                              "completed",
-                              "ready",
-                              "failed",
-                            ]),
-                            event,
-                          ]),
-                        ]
-                      : (
-                          options.discord_events ?? [
-                            "upcoming",
-                            "completed",
-                            "ready",
-                            "failed",
-                          ]
-                        ).filter((v) => v !== event),
-                  })
-                }
-              />
-              {event}
-            </label>
-          ))}
-        </div>
-        <label className="rsw-check">
-          <input
-            type="checkbox"
-            checked={clearDiscord}
-            onChange={(e) => setClearDiscord(e.target.checked)}
-          />
-          Remove saved Discord webhook
-        </label>
-        <h3>Rust WebRCON</h3>
         <p>
           The host comes from this server's allocation or node. Leave the
           password blank to use the egg's RCON_PASS or RCON_PASSWORD value when
@@ -269,32 +158,15 @@ export default function SettingsPanel({ base }: { base: string }) {
     refetchInterval: 15000,
   });
   return (
-    <section>
-      <h2>Discord notifications and WebRCON settings</h2>
-      <p>
-        Connect Discord for wipe announcements and WebRCON for player counts and
-        Rust startup checks.
-      </p>
-      {query.isPending && <p>Loading settings…</p>}
-      {query.error && <p role="alert">{httpErrorToHuman(query.error)}</p>}
-      {query.data && <SettingsForm initial={query.data} base={base} />}
-      {!!query.data?.notifications?.length && (
-        <>
-          <h3>Recent notification deliveries</h3>
-          <ul className="rsw-calendar">
-            {query.data.notifications.map((notification) => (
-              <li key={notification.event_key}>
-                <strong>
-                  {notification.event_key}: {notification.status}
-                </strong>
-                <small>
-                  {notification.created_at} {notification.message}
-                </small>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-    </section>
+    <>
+      <AnnouncementsPanel base={base} />
+      <section>
+        <h2>WebRCON settings</h2>
+        <p>Connect WebRCON for player counts and Rust startup checks.</p>
+        {query.isPending && <p>Loading settings…</p>}
+        {query.error && <p role="alert">{httpErrorToHuman(query.error)}</p>}
+        {query.data && <SettingsForm initial={query.data} base={base} />}
+      </section>
+    </>
   );
 }

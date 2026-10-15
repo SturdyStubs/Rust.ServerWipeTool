@@ -20,7 +20,7 @@ final class Calendar
                 $events[] = ['wipe_id' => $wipe->id, 'label' => $wipe->label, 'at' => $next->format(DATE_ATOM), 'timezone' => $wipe->timezone];
                 $next = Recurrence::next($wipe->repeat, $wipe->timezone, $next);
             }
-            if ($wipe->repeat) {
+            if (array_filter($wipe->repeat, fn ($rule) => preg_match('/^[1-5] /', $rule))) {
                 $notes[] = ['wipe_id' => $wipe->id, 'message' => 'Months without the selected fifth weekday and nonexistent daylight-saving times are skipped.'];
             }
             foreach (Recurrence::skips($wipe->repeat, $wipe->timezone, DateTimeImmutable::createFromInterface(now('UTC'))) as $skip) {

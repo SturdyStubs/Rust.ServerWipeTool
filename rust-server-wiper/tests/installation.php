@@ -52,8 +52,8 @@ if (! $record->enabled || $record->error) {
     throw new RuntimeException('Extension did not load: '.$record->error);
 }
 $routes = array_filter(iterator_to_array($app['router']->getRoutes()), fn ($r) => str_contains($r->uri(), 'extensions/rust-server-wiper'));
-if (count($routes) !== 23) {
-    throw new RuntimeException('Expected 23 extension routes, got '.count($routes));
+if (count($routes) !== 34) {
+    throw new RuntimeException('Expected 34 extension routes, got '.count($routes));
 }
 $registry = $app->make(ExtensionConsoleRegistry::class)->snapshot();
 if (count($registry['commands']['rust-server-wiper'] ?? []) !== 2 || count($registry['schedules']['rust-server-wiper'] ?? []) !== 1) {

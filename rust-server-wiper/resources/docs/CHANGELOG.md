@@ -1,3 +1,25 @@
+# 2.3.0-beta.1
+
+- Named encrypted Discord webhook destinations, reusable message/embed presets and modular event rules.
+- Multiple reminder offsets, presets and channels per event, with optional per-schedule scoping.
+- Text-only, embed-only or combined messages; rich embed fields, mention controls and safe previews.
+- Pre-stop and observed-running events: start acceptance alone never triggers a completion post.
+- Separate notification queue and worker probe, encrypted snapshots, independent deduplication, rate-limit handling and stale-message cancellation.
+- Epoch labels with instant-copy menus for raw seconds, Discord default and all nine timestamp styles.
+- Existing single-template settings remain active until the modular configuration is saved. Configure a separate delivery worker on upgrade.
+- Prerelease; live Discord/Rust/Wings validation remains pending. See FEATURES-2.3.md.
+
+# 2.2.0-beta.1
+
+- Guided wipe setup, separate management views and responsive navigation.
+- Pre-wipe health checks reuse read-only execution preflight, check backup quota and optional RCON, and verify scheduler/queue activity without destructive changes.
+- Versioned configuration export/import, identity-directory adaptation, explicit review, paused imports, atomic limits and durable import retry protection.
+- Timezone dropdowns and browser-local defaults; visible server clock and clock-skew warnings; future-time errors identify the interpreted timezone and current server time.
+- Weekly and anchored 14-day schedules, including month-boundary and DST handling.
+- Skip-next action advances exactly one future occurrence and records it in history.
+- New import-receipt migration preserves existing schedules and run history. Restart queue workers after upgrade.
+- Still a prerelease pending live Rust/Wings verification. See FEATURES-2.2.md.
+
 # 2.1.0-beta.1
 
 - Confirmed native pre-wipe backups, encrypted recovery values, full-server restore and restore history.

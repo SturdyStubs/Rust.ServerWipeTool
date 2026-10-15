@@ -1,3 +1,24 @@
+# v2.3.0 implementation checklist
+
+- [x] Modular encrypted webhook destinations, message/embed presets and many-to-many event rules.
+- [x] Separate reminders, pre-stop, observed-running and failure events, scoped to all wipes or one schedule.
+- [x] Dedicated delivery queue, worker probe, independent receipts, rate-limit handling and stale-message cancellation.
+- [x] Optional text and rich embeds, safe previews, explicit mention controls and Discord payload validation.
+- [x] Epoch values and instant-copy menus for raw seconds, default and all nine documented Discord timestamp styles.
+- [x] Preserve legacy Discord settings until modular configuration is saved.
+- [x] Backend and UI regression tests and desktop/mobile browser fixtures.
+- [ ] Verify actual asynchronous delivery, Discord rendering and live Rust/Wings event timing before stable release.
+
+# v2.2.0 implementation checklist
+
+- [x] Read-only per-plan health checks with shared execution preflight, backup quota, Wings/RCON checks, scheduler heartbeat and a harmless standard-queue probe.
+- [x] Versioned configuration JSON export/import with review, identity-relative paths, paused schedules, limits, atomic writes and durable retry receipts.
+- [x] Browser-local default timezone, native timezone dropdown, server clock, clock-skew warning and contextual future-date validation.
+- [x] Weekly and anchored 14-day repeats shared by execution, calendar and import.
+- [x] Skip exactly one future occurrence with an expected-date check, audit entry and active-operation guards.
+- [x] Backend and UI regression coverage, including one-minute-ahead Phoenix scheduling under a different PHP default timezone.
+- [ ] Verify actual backup/restore, map downloads, Rust readiness, queue probes and RCON on a disposable live server before a stable release.
+
 # v2.1.0 implementation checklist
 
 All twelve features below were approved for implementation. This branch starts from the tested `v2.0.0` baseline. All twelve features are implemented in `2.1.0-beta.1` and covered by local regression checks. Unchecked release items still require a real staging environment; this is not a stable release.

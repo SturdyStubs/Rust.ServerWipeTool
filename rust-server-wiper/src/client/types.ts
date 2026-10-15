@@ -1,3 +1,4 @@
+import { browserTimezone } from "./TimezoneField";
 export interface Payload {
   name: string | null;
   description: string | null;
@@ -58,6 +59,7 @@ export interface Run {
   created_by?: number | null;
 }
 export interface Overview {
+  server_now?: string;
   environment: Record<string, string>;
   timezones: string[];
   wipes: Wipe[];
@@ -106,7 +108,7 @@ export interface FileEntry {
 export function blankDraft(): Draft {
   return {
     label: "",
-    timezone: "UTC",
+    timezone: browserTimezone(),
     enabled: true,
     time: "",
     repeat: [],
@@ -157,4 +159,20 @@ export function addFile(files: string, path: string): string {
       path,
     ]),
   ].join("\n");
+}
+
+export function describeRule(rule: string): string {
+  const [kind, day, time] = rule.split(" ");
+  const days = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+  ];
+  if (kind === "weekly") return `Every ${days[Number(day) - 1]} at ${time}`;
+  if (kind === "fortnightly") return `Every 14 days from ${day} at ${time}`;
+  return `${["First", "Second", "Third", "Fourth", "Fifth"][Number(kind) - 1]} ${days[Number(day) - 1]} at ${time}`;
 }

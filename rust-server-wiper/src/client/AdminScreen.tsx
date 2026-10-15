@@ -6,7 +6,10 @@ import {
   http,
   httpErrorToHuman,
 } from "@pterodactyl/sdk";
+import TimezoneField, { browserTimezone } from "./TimezoneField";
 type Data = {
+  timezones?: string[];
+  server_now?: string;
   servers: { id: number; name: string; identity: { path: string | null } }[];
   presets: { id: number; name: string; server_id: number }[];
   runs: {
@@ -40,7 +43,7 @@ export default function AdminScreen() {
   const [selected, setSelected] = useState<number[]>([]);
   const [preset, setPreset] = useState("");
   const [time, setTime] = useState("");
-  const [timezone, setTimezone] = useState("UTC");
+  const [timezone, setTimezone] = useState(browserTimezone);
   const [stagger, setStagger] = useState(10);
   const [fallback, setFallback] = useState(false);
   const [plan, setPlan] = useState<Plan[] | null>(null);
@@ -170,14 +173,12 @@ export default function AdminScreen() {
                     ))}
                   </select>
                 </label>
-                <label className="rsw-field">
-                  <span>Timezone</span>
-                  <input
-                    required
-                    value={timezone}
-                    onChange={(e) => setTimezone(e.target.value)}
-                  />
-                </label>
+                <TimezoneField
+                  value={timezone}
+                  onChange={setTimezone}
+                  timezones={overview.data?.timezones}
+                  serverNow={overview.data?.server_now}
+                />
                 <label className="rsw-field">
                   <span>First wipe date and time</span>
                   <input

@@ -10,32 +10,54 @@ use InvalidArgumentException;
 
 final class Recurrence
 {
-    /** Rules are "ordinal ISO-weekday HH:MM", e.g. "1 4 14:00" for first Thursday. */
+    /** Monthly: "1 4 14:00"; weekly: "weekly 4 14:00"; fortnightly: "fortnightly 2026-10-01 14:00". */
     public static function next(array $rules, string $timezone, DateTimeImmutable $after): ?DateTimeImmutable
     {
-        if (! $rules) {
-            return null;
-        }
         $zone = new DateTimeZone($timezone);
         $local = $after->setTimezone($zone);
-        $month = $local->modify('first day of this month')->setTime(12, 0);
         $best = null;
-        for ($offset = 0; $offset < 24; $offset++) {
-            $first = $month->modify("+$offset months");
-            foreach ($rules as $rule) {
-                $candidate = self::inMonth($rule, $first, $zone)['date'];
-                if (! $candidate || $candidate <= $after) {
-                    continue;
+        foreach ($rules as $rule) {
+            $candidate = null;
+            if (preg_match('/^(weekly|fortnightly) (\S+) ([0-2][0-9]:[0-5][0-9])$/D', $rule, $m)) {
+                if ($m[1] === 'weekly' && ! preg_match('/^[1-7]$/D', $m[2])) {
+                    throw new InvalidArgumentException('Invalid weekly weekday.');
                 }
-                if ($best === null || $candidate < $best) {
-                    $best = $candidate;
+                $anchor = $m[1] === 'fortnightly' ? self::localTime($m[2].'T'.$m[3], $timezone)->setTimezone($zone) : null;
+                $day = $anchor && $anchor->format('Y-m-d') > $local->format('Y-m-d') ? $anchor->setTime(12, 0) : $local->setTime(12, 0);
+                for ($i = 0; $i < 740; $i++) {
+                    $date = $day->modify("+$i days");
+                    if ($anchor ? ($date->format('Y-m-d') < $anchor->format('Y-m-d') || (int) $anchor->setTime(12, 0)->diff($date)->format('%a') % 14 !== 0) : (int) $date->format('N') !== (int) $m[2]) {
+                        continue;
+                    }
+                    try {
+                        $value = self::localTime($date->format('Y-m-d').'T'.$m[3], $timezone);
+                    } catch (InvalidArgumentException) {
+                        continue; // Skip nonexistent wall-clock times without moving the anchor.
+                    }
+                    if ($value > $after) {
+                        $candidate = $value;
+                        break;
+                    }
+                }
+            } else {
+                $month = $local->modify('first day of this month')->setTime(12, 0);
+                for ($offset = 0; $offset < 24; $offset++) {
+                    $value = self::inMonth($rule, $month->modify("+$offset months"), $zone)['date'];
+                    if ($value && $value > $after) {
+                        $candidate = $value;
+                        break;
+                    }
                 }
             }
-            if ($best !== null) {
-                return $best->setTimezone(new DateTimeZone('UTC'));
+            if ($candidate === null) {
+                throw new InvalidArgumentException('No recurrence found within two years.');
+            }
+            if ($best === null || $candidate < $best) {
+                $best = $candidate;
             }
         }
-        throw new InvalidArgumentException('No recurrence found within two years.');
+
+        return $best?->setTimezone(new DateTimeZone('UTC'));
     }
 
     private static function inMonth(string $rule, DateTimeImmutable $first, DateTimeZone $zone): array
@@ -60,6 +82,9 @@ final class Recurrence
         $skips = [];
         for ($i = 0; $i < 12; $i++) {
             foreach ($rules as $rule) {
+                if (str_starts_with($rule, 'weekly ') || str_starts_with($rule, 'fortnightly ')) {
+                    continue;
+                }
                 $item = self::inMonth($rule, $month->modify("+$i months"), $zone);
                 if (! $item['date']) {
                     $skips[] = ['local' => $item['local'], 'rule' => $rule, 'reason' => $item['reason']];
