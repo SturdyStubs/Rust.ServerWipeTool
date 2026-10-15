@@ -60,6 +60,7 @@ function SettingsForm({ initial, base }: { initial: Config; base: string }) {
           Blank secret fields keep saved values. Passwords and webhook URLs are
           encrypted and never returned to this form.
         </p>
+        <h3>Discord announcements</h3>
         <div className="rsw-grid">
           <label className="rsw-field">
             <span>Discord webhook URL</span>
@@ -269,29 +270,31 @@ export default function SettingsPanel({ base }: { base: string }) {
   });
   return (
     <section>
-      <details>
-        <summary>Discord notifications and WebRCON settings</summary>
-        {query.isPending && <p>Loading settings…</p>}
-        {query.error && <p role="alert">{httpErrorToHuman(query.error)}</p>}
-        {query.data && <SettingsForm initial={query.data} base={base} />}
-        {!!query.data?.notifications?.length && (
-          <>
-            <h3>Recent notification deliveries</h3>
-            <ul className="rsw-calendar">
-              {query.data.notifications.map((notification) => (
-                <li key={notification.event_key}>
-                  <strong>
-                    {notification.event_key}: {notification.status}
-                  </strong>
-                  <small>
-                    {notification.created_at} {notification.message}
-                  </small>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-      </details>
+      <h2>Discord notifications and WebRCON settings</h2>
+      <p>
+        Connect Discord for wipe announcements and WebRCON for player counts and
+        Rust startup checks.
+      </p>
+      {query.isPending && <p>Loading settings…</p>}
+      {query.error && <p role="alert">{httpErrorToHuman(query.error)}</p>}
+      {query.data && <SettingsForm initial={query.data} base={base} />}
+      {!!query.data?.notifications?.length && (
+        <>
+          <h3>Recent notification deliveries</h3>
+          <ul className="rsw-calendar">
+            {query.data.notifications.map((notification) => (
+              <li key={notification.event_key}>
+                <strong>
+                  {notification.event_key}: {notification.status}
+                </strong>
+                <small>
+                  {notification.created_at} {notification.message}
+                </small>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </section>
   );
 }

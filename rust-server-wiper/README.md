@@ -46,6 +46,16 @@ Import copies future one-time schedules, monthly repeat rules and map URLs. Impo
 
 ## Using the wiper
 
+The interface separates **Schedules**, **Map library**, **Activity & backups**, and **Settings**. Creating or editing a wipe follows four steps:
+
+1. **Wipe scope:** name the wipe, apply a preset, and review file patterns and the identity directory.
+2. **Next map:** keep current settings or configure a procedural map, fixed custom URL, or saved map rotation.
+3. **Timing & safeguards:** choose a one-time date or monthly repeat; review backups and optional player checks and announcements. Leave timing blank for an immediate wipe.
+4. **Review:** check the summary and save the schedule, or preview matching files and acknowledge deletion before choosing **Wipe now**. Editing any option clears that acknowledgement.
+
+Use Back or the step buttons to revisit a choice. Switching sections preserves the open draft; closing the editor discards it. Manage saved maps in **Map library**, reports and full-backup restores in **Activity & backups**, and Discord/WebRCON connections in **Settings**.
+
+
 - Give each schedule a name and IANA timezone, such as `America/Phoenix`. Defaults to UTC. Dates are stored in UTC and displayed in the schedule's timezone.
 - Select a one-time local date, or one or more monthly rules such as first Thursday at 14:00. A fifth weekday is skipped in months without that date. Nonexistent local times during a daylight-saving jump are skipped; ambiguous fall-back times use PHP's first chosen occurrence and run once.
 - Select exact paths or filename patterns, one per line. Example for a map wipe:

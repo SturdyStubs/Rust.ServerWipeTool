@@ -71,6 +71,11 @@ function mount() {
   );
   return client;
 }
+function step(name: string) {
+  fireEvent.click(
+    screen.getByRole("button", { name: new RegExp(`^[1-4] ${name}$`) }),
+  );
+}
 async function edit() {
   mount();
   fireEvent.click(screen.getByRole("button", { name: "Create wipe" }));
@@ -80,18 +85,13 @@ async function edit() {
   fireEvent.change(screen.getByLabelText(/Files and patterns/), {
     target: { value: "/server/rust/*.sav" },
   });
-  await waitFor(() =>
-    expect(
-      screen.getByText(
-        "No wipes scheduled. Create a wipe to choose files and a time.",
-      ),
-    ).toBeTruthy(),
-  );
+  await screen.findByLabelText("Apply preset");
 }
 describe("wipe editor", () => {
   it("requires reviewed preview before destructive action", async () => {
     await edit();
     expect(screen.queryByRole("button", { name: "Wipe now" })).toBeNull();
+    step("Review");
     fireEvent.click(screen.getByRole("button", { name: "Preview files" }));
     const run = await screen.findByRole("button", { name: "Wipe now" });
     expect((run as HTMLButtonElement).disabled).toBe(true);
@@ -107,6 +107,7 @@ describe("wipe editor", () => {
   });
   it("invalidates preview and acknowledgement after any draft edit", async () => {
     await edit();
+    step("Review");
     fireEvent.click(screen.getByRole("button", { name: "Preview files" }));
     await screen.findByRole("button", { name: "Wipe now" });
     fireEvent.click(screen.getByLabelText(/I reviewed the files/));
@@ -117,6 +118,7 @@ describe("wipe editor", () => {
   });
   it("clears incompatible procedural values when map rotation enabled", async () => {
     await edit();
+    step("Next map");
     fireEvent.change(screen.getByLabelText("Map seed"), {
       target: { value: "42" },
     });
@@ -127,6 +129,7 @@ describe("wipe editor", () => {
     expect(
       (screen.getByLabelText("Map seed") as HTMLInputElement).disabled,
     ).toBe(true);
+    step("Review");
     fireEvent.click(screen.getByRole("button", { name: "Preview files" }));
     await waitFor(() =>
       expect(mock.post).toHaveBeenCalledWith(
@@ -143,6 +146,7 @@ describe("wipe editor", () => {
   });
   it("monthly repeat clears the one-time date", async () => {
     await edit();
+    step("Timing & safeguards");
     fireEvent.change(screen.getByLabelText("One-time date and time"), {
       target: { value: "2030-01-01T12:00" },
     });
@@ -160,6 +164,7 @@ describe("wipe editor", () => {
   it("request failures remain visible and editor remains available", async () => {
     await edit();
     mock.post.mockRejectedValueOnce(new Error("Wings is unavailable"));
+    step("Review");
     fireEvent.click(screen.getByRole("button", { name: "Preview files" }));
     expect(await screen.findByRole("alert")).toBeTruthy();
     expect(screen.getByRole("alert").textContent).toContain(
@@ -192,6 +197,8 @@ it("full preset exposes map files and blueprint deletion for review", async () =
 });
 it("player-aware controls default to cancellation at the deadline", async () => {
   await edit();
+  step("Timing & safeguards");
+  fireEvent.click(screen.getByText("Wait for players to leave"));
   fireEvent.click(screen.getByLabelText("Wait until the server is empty"));
   expect(
     (screen.getByLabelText("At the deadline") as HTMLSelectElement).value,
@@ -250,4 +257,36 @@ it("saved secrets stay blank and blank inputs preserve them on save", async () =
       expect.objectContaining({ discord_webhook: null, rcon_password: null }),
     ),
   );
+});
+
+it("separates tasks and preserves an unfinished wipe across navigation", async () => {
+  await edit();
+  expect(screen.queryByRole("heading", { name: "Run history" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Map library" }));
+  expect(
+    screen.getByRole("heading", { name: "Custom map rotation" }),
+  ).toBeTruthy();
+  expect(
+    screen.queryByRole("button", { name: "Continue to next map" }),
+  ).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Schedules" }));
+  expect(
+    (screen.getByLabelText("Schedule name") as HTMLInputElement).value,
+  ).toBe("Monthly");
+  fireEvent.click(screen.getByRole("button", { name: "Continue to next map" }));
+  expect(screen.getByRole("heading", { name: "Next map" })).toBeTruthy();
+});
+it("requires timing before saving and returns to invalid fields before preview", async () => {
+  await edit();
+  step("Review");
+  expect(
+    (screen.getByRole("button", { name: "Save schedule" }) as HTMLButtonElement)
+      .disabled,
+  ).toBe(true);
+  fireEvent.change(screen.getByLabelText("Schedule name"), {
+    target: { value: "" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Preview files" }));
+  expect(screen.getByRole("heading", { name: "Wipe scope" })).toBeTruthy();
+  expect(mock.post).not.toHaveBeenCalled();
 });

@@ -97,7 +97,7 @@ export default function AdminScreen() {
         )}
         {message && <p role="status">{message}</p>}
         <section>
-          <h2>Select servers</h2>
+          <h2>1. Select servers</h2>
           {overview.isPending && <p>Loading servers…</p>}
           <ul className="rsw-calendar">
             {overview.data?.servers.map((server) => (
@@ -146,7 +146,7 @@ export default function AdminScreen() {
           </div>
         </section>
         <section>
-          <h2>Batch schedule</h2>
+          <h2>2. Configure the schedule</h2>
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -208,6 +208,11 @@ export default function AdminScreen() {
                 Use the preset's identity directory when automatic detection
                 fails
               </label>
+              <p className="rsw-workflow-note">
+                {selected.length} servers selected. Preview the file matches and
+                start times before creating schedules. Previewing does not
+                change any server.
+              </p>
               <Button
                 type="submit"
                 disabled={!selected.length || selected.length > 50}
@@ -218,7 +223,7 @@ export default function AdminScreen() {
           </form>
           {plan && (
             <>
-              <h3>Server results</h3>
+              <h3>3. Review each server</h3>
               <ul className="rsw-calendar">
                 {plan.map((row) => (
                   <li key={row.server_id}>
