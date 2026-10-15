@@ -14,6 +14,7 @@ use Pterodactyl\Models\User;
 use RustServerWiper\Models\Run;
 use RustServerWiper\Models\Wipe;
 use RustServerWiper\Models\WipeMap;
+use RustServerWiper\Services\Announcements;
 use RustServerWiper\Services\Availability;
 use RustServerWiper\Services\Gateway;
 use RustServerWiper\Services\Maintenance;
@@ -101,15 +102,22 @@ final class ExecuteWipe implements ShouldQueue
                     }
                     $phase = str_contains(strtolower($message), 'backup') ? 'backup' : (str_contains(strtolower($message), 'readiness') ? 'readiness' : (str_contains(strtolower($message), 'delet') ? 'deleting' : 'execution'));
                     Reports::phase($run, $phase, $message, $result);
-                }, ['run_id' => $run->id, 'recent_maps' => $recent]));
+                    if (isset($metadata['event'])) {
+                        app(Announcements::class)->run($run, $metadata['event']);
+                    }
+                }, ['run_id' => $run->id, 'recent_maps' => $recent, 'observe_running' => app(Announcements::class)->wantsRunning($run->server_id, $run->wipe_id)]));
             $timedOut = ($result['readiness'] ?? '') === 'timed_out';
             $run->update(['status' => $timedOut ? 'startup_failed' : 'completed', 'phase' => 'finished', 'message' => $timedOut ? 'Files wiped; readiness timed out. Inspect startup before another wipe.' : (($result['readiness'] ?? '') === 'rust_ready' ? 'Wipe completed; Rust is ready.' : 'Wipe completed; start signal accepted.'), 'result' => $result, 'finished_at' => now('UTC')]);
+            if ($timedOut) {
+                app(Announcements::class)->run($run, 'failed');
+            }
             app(Notifications::class)->send($run->server_id, $timedOut ? 'failed' : 'completed', 'run:'.$run->id.':completed', ['label' => $run->label, 'message' => $run->message]);
             if (in_array($result['readiness'] ?? '', ['rust_ready', 'process_running'], true)) {
                 app(Notifications::class)->send($run->server_id, 'ready', 'run:'.$run->id.':ready', ['label' => $run->label, 'message' => $run->message]);
             }
         } catch (Throwable $e) {
             $run->update(['status' => 'failed', 'message' => mb_substr(Reports::redact($e->getMessage()), 0, 2000), 'finished_at' => now('UTC')]);
+            app(Announcements::class)->run($run, 'failed');
             app(Notifications::class)->send($run->server_id, 'failed', 'run:'.$run->id.':failed', ['label' => $run->label, 'message' => $run->message]);
             report($e);
         } finally {
@@ -124,5 +132,10 @@ final class ExecuteWipe implements ShouldQueue
         Run::query()->whereKey($this->runId)->whereIn('status', ['queued', 'running'])->update([
             'status' => 'failed', 'message' => mb_substr(Reports::redact($e?->getMessage() ?? 'Worker stopped. Inspect the server before retrying.'), 0, 2000), 'finished_at' => now('UTC'),
         ]);
+        $run = Run::query()->find($this->runId);
+        if ($run && $run->status === 'failed') {
+            app(Announcements::class)->run($run, 'failed');
+            app(Notifications::class)->send($run->server_id, 'failed', 'run:'.$run->id.':failed', ['label' => $run->label, 'message' => $run->message]);
+        }
     }
 }

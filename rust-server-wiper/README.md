@@ -1,8 +1,8 @@
-# Rust Server Wiper 2.1.0-beta.1
+# Rust Server Wiper 2.3.0-beta.1
 
-Read [FEATURES-2.1.md](FEATURES-2.1.md) for the new features, permissions, defaults and upgrade requirements. This is a beta pending live server verification.
+Read [FEATURES-2.3.md](FEATURES-2.3.md) for modular webhook announcements, embeds and timestamp copying, and [FEATURES-2.2.md](FEATURES-2.2.md) for health checks, configuration transfer, timezone changes and scheduling improvements. [FEATURES-2.1.md](FEATURES-2.1.md) covers the existing permissions, safeguards and queue requirements. This is a beta pending live server verification.
 
-Native extension converted from the supplied UndercoverNL Rust Server Wiper addon. No panel source patches, Blueprint installation, or panel frontend rebuild is required. Original files in `Manual` and `Blueprint` are preserved.
+Native extension converted from the supplied UndercoverNL Rust Server Wiper addon. No panel source patches, Blueprint installation, or panel frontend rebuild is required. Original purchased addon files are excluded from this repository.
 
 ## Install
 
@@ -23,15 +23,40 @@ Tested against **Pterodactyl 2.0.0-beta.1**, commit `65913c6aac5367a35f48b4448f0
    php artisan queue:restart
    ```
 
-3. Upload `rust-server-wiper-2.1.0-beta.1.pteroext` in **Admin → Extensions → Install** and select **Enable**. Alternatively:
+3. Upload `rust-server-wiper-2.3.0-beta.1.pteroext` in **Admin → Extensions → Install** and select **Enable**. Alternatively:
 
    ```sh
-   php artisan p:extension:install /path/to/rust-server-wiper-2.1.0-beta.1.pteroext --enable
+   php artisan p:extension:install /path/to/rust-server-wiper-2.3.0-beta.1.pteroext --enable
    chown -R www-data:www-data extensions public/assets/extensions
    ```
 
 4. Reload the panel. Open **Rust Wipes** on a Rust server. The tab appears for eggs tagged `rust`, startup commands containing Rust/RustDedicated, or exposed `WORLD_SEED` variables. Add the `rust` tag to a custom egg whose startup wrapper hides the executable. The backend also requires `WORLD_SEED` and `WORLD_SIZE` variables.
 5. Owners and administrators have access. Regrant subusers **ext.rust-server-wiper.manage**; the old `wipe.manage` permission is not reused. This permission authorizes deletion, server power actions, console commands, startup changes and map management.
+
+### Discord delivery worker
+
+To use modular announcements, add a separate process managed by your panel's process manager:
+
+```sh
+cd /var/www/pterodactyl
+php artisan queue:work --queue=rust-wiper-notifications --sleep=1 --tries=20 --timeout=30
+```
+
+Run it as the panel service user and configure automatic restart and startup on boot. Keep the existing `standard` worker running separately so long wipes cannot block messages. All workers, scheduler and web processes must share the same asynchronous queue connection and persistent cache. Verify with **Settings → Discord announcements → Check delivery worker**; the probe never posts to Discord. See [the announcement guide](FEATURES-2.3.md) for delivery limits and event semantics.
+
+## Upgrade an existing native extension
+
+Back up the panel database and retain your previous package. Check the queue requirements above, then replace the installed package through the extension manager or CLI:
+
+```sh
+cd /var/www/pterodactyl
+php artisan p:extension:install /path/to/rust-server-wiper-2.3.0-beta.1.pteroext --replace --enable
+php artisan queue:restart
+```
+
+The migrations preserve schedules, maps and run history. Locally verified upgrade paths are 2.0.0 → 2.3.0-beta.1 and 2.2.0-beta.1 → 2.3.0-beta.1. Configure the additional delivery worker before saving modular announcement settings. Legacy Discord settings keep their previous behavior until **Save announcements** is selected. Reload open panel tabs after upgrading and review health checks before the next scheduled wipe.
+
+Restoring an older package does not reverse database migrations. If rollback is necessary, restore the matching database backup during a maintenance window after reviewing server state. Do not replay an interrupted wipe to test an upgrade.
 
 ## Existing schedules
 
@@ -46,18 +71,20 @@ Import copies future one-time schedules, monthly repeat rules and map URLs. Impo
 
 ## Using the wiper
 
-The interface separates **Schedules**, **Map library**, **Activity & backups**, and **Settings**. Creating or editing a wipe follows four steps:
+For Discord messages, open **Settings** and connect **Webhooks**, **Message presets**, and **Announcement rules**. Run a separate `rust-wiper-notifications` delivery worker; see [FEATURES-2.3.md](FEATURES-2.3.md). Click a schedule Epoch value to copy a Discord timestamp format.
+
+The interface separates **Schedules**, **Map library**, **Activity & backups**, **Import / export**, and **Settings**. Creating or editing a wipe follows four steps:
 
 1. **Wipe scope:** name the wipe, apply a preset, and review file patterns and the identity directory.
 2. **Next map:** keep current settings or configure a procedural map, fixed custom URL, or saved map rotation.
-3. **Timing & safeguards:** choose a one-time date or monthly repeat; review backups and optional player checks and announcements. Leave timing blank for an immediate wipe.
-4. **Review:** check the summary and save the schedule, or preview matching files and acknowledge deletion before choosing **Wipe now**. Editing any option clears that acknowledgement.
+3. **Timing & safeguards:** choose a one-time date, monthly rule, weekly repeat, or anchored 14-day repeat; review backups and optional player checks and announcements. Leave timing blank for an immediate wipe.
+4. **Review:** run the pre-wipe health check, check the summary and save the schedule, or preview matching files and acknowledge deletion before choosing **Wipe now**. Editing any option clears that acknowledgement.
 
 Use Back or the step buttons to revisit a choice. Switching sections preserves the open draft; closing the editor discards it. Manage saved maps in **Map library**, reports and full-backup restores in **Activity & backups**, and Discord/WebRCON connections in **Settings**.
 
 
-- Give each schedule a name and IANA timezone, such as `America/Phoenix`. Defaults to UTC. Dates are stored in UTC and displayed in the schedule's timezone.
-- Select a one-time local date, or one or more monthly rules such as first Thursday at 14:00. A fifth weekday is skipped in months without that date. Nonexistent local times during a daylight-saving jump are skipped; ambiguous fall-back times use PHP's first chosen occurrence and run once.
+- Give each schedule a name and IANA timezone, such as `America/Phoenix`. New forms default to your browser timezone. The timezone dropdown and displayed server clock make the interpretation explicit. Dates are stored in UTC and displayed in the schedule's timezone.
+- Select a one-time local date, weekly or anchored 14-day repeat, or one or more monthly rules such as first Thursday at 14:00. A fifth weekday is skipped in months without that date. Nonexistent local times during a daylight-saving jump are skipped; ambiguous fall-back times use PHP's first chosen occurrence and run once.
 - Select exact paths or filename patterns, one per line. Example for a map wipe:
 
   ```text
@@ -71,20 +98,35 @@ Use Back or the step buttons to revisit a choice. Switching sections preserves t
 - Blank optional startup fields retain existing values. Name/description support `%DAY%`, `%MONTH%`, `%YEAR%`. An explicit procedural seed or size clears a custom `MAP_URL` when the egg supports it. A new seed also updates exact `server.seed` directives in the identity's `cfg/server.cfg`, if present.
 - A fixed custom map and map rotation are alternatives to procedural seed/size. Rotation avoids the current URL when alternatives exist; one saved map still works.
 - Commands run 1–1,440 minutes before scheduled wipes. They are sent at most once per occurrence. Notifications missed during scheduler downtime are not replayed. A Wings command error is logged rather than silently swallowed.
-- **Preview files** resolves matching entries without stopping or modifying the server. The preview must be reviewed and acknowledged before **Wipe now**. Editing settings clears the preview and acknowledgement. Immediate wipes skip scheduled announcements. File matches are resolved again after stopping, so a preview is not a frozen snapshot.
+- **Preview files** resolves matching entries without stopping or modifying the server. The preview must be reviewed and acknowledged before **Wipe now**. Editing settings clears the preview and acknowledgement. Immediate wipes have no advance reminders but emit configured lifecycle announcements. File matches are resolved again after stopping, so a preview is not a frozen snapshot.
 - **Pause** cancels queued runs. Editing/deleting an actively running schedule is blocked. Deleting a schedule keeps its run history.
 
 ## Execution and failures
 
 The scheduler persists each occurrence, advances its next due time atomically, and submits its run to the standard queue. A per-server lock prevents concurrent wipes. Duplicate queue deliveries cannot claim the same run twice. Server installation, suspension, restore and transfer states are checked through the panel.
 
-The worker validates paths and egg variables before stopping. It sends a graceful stop and checks Wings every two seconds for up to 180 seconds. It deletes nothing if the server does not stop. It checks the stopped state again before each deletion batch, writes startup values, syncs Wings, and sends start after successful deletion. Completion means the start signal was accepted, not that Rust finished booting.
+The worker validates paths and egg variables before stopping. It sends a graceful stop and checks Wings every two seconds for up to 180 seconds. It deletes nothing if the server does not stop. It checks the stopped state again before each deletion batch, writes startup values, syncs Wings, and sends start after successful deletion. Reports distinguish start acceptance from observed running and optional Rust/RCON readiness. Without readiness checks or a matching running-announcement rule, completion can mean start acceptance alone. A **wiped / server running** announcement waits for an observed Wings running state; Rust may still be loading.
 
 Wipes more than 15 minutes late, including jobs delayed in the queue, are marked **missed**. After downtime, a recurring schedule advances to its next future occurrence instead of wiping unexpectedly. Failed or interrupted runs are **never automatically replayed**. History shows the latest 50 records; the database retains all records. Check the server and make a new reviewed immediate wipe if appropriate. A failed destructive operation may leave partial changes; there is no automatic rollback. Optional confirmed pre-wipe backups are described in FEATURES-2.1.md. Filesystem changes and panel startup/power operations use the panel's native actions and activity logging where provided.
 
 Disabling the extension stops future scheduling and cancels jobs when they next check availability. If disabled after a server stop, the worker leaves the server stopped without deleting. A wipe already deleting files finishes its sequence to keep the server in a known state. A concurrent manual power action can still race between a stopped-state check and a Wings request; avoid manual starts during a wipe. Two different enabled schedules due together are serialized, so review overlapping schedules.
 
 Check **Run history**, `storage/logs/laravel-*.log` (or your configured panel log), and **Admin → Extensions**. Check that `php artisan schedule:list` includes `rust-server-wiper:tick` and that workers consume `standard`. Use `php artisan rust-server-wiper:tick` to execute one scheduler pass manually; it may queue due destructive wipes.
+
+## Troubleshooting
+
+| Symptom | What to check |
+| --- | --- |
+| Rust Wipes tab missing | Reload the panel, confirm the extension is enabled and review egg discovery and subuser permissions above. |
+| Schedule or reminder not firing | Check the minute scheduler, `rust-server-wiper:tick` registration, `standard` worker, shared cache and server clock. Missed reminders are not replayed. |
+| Messages remain queued | Start the separate `rust-wiper-notifications` worker and run **Check delivery worker**. Review recent delivery statuses and the panel logs. |
+| Message failed or expired | Inspect the delivery's recovery guidance, webhook and permissions. Explicit rate limits can retry; ambiguous failures are not replayed automatically to avoid duplicate posts. Previews never send messages. |
+| A near-future time is rejected | Compare the displayed server clock, selected timezone and your device clock. Use the five-minute shortcut, then review the resulting epoch. Dates are stored in UTC; a one-time date must still be future when saved. |
+| Health check reports a worker problem | Confirm the correct queue, shared connection/cache and worker process. A synchronous test queue cannot prove a separate worker is active. |
+| Custom map check fails | Check public URL reachability and expiration. Imports/exports remove signed URL parameters, so restore required signed URLs manually. Internal-address redirects are rejected. |
+| Wipe failed after partial changes | Inspect the phase, removed files, startup values and backup in **Activity & backups**. Verify server state before an explicit restore or new reviewed wipe. There is no automatic rollback or destructive replay. |
+
+For support or a bug report, include the extension/panel versions, failing phase, sanitized run report and relevant logs. Remove webhook URLs, RCON passwords, signed map URLs and configuration secrets.
 
 ## Development and verification
 
@@ -104,7 +146,7 @@ Run package checks with the panel:
 
 ```sh
 php artisan p:extension:doctor /path/to/rust-server-wiper
-php artisan p:extension:pack /path/to/rust-server-wiper --output=/path/to/rust-server-wiper-2.1.0-beta.1.pteroext
+php artisan p:extension:pack /path/to/rust-server-wiper --output=/path/to/rust-server-wiper-2.3.0-beta.1.pteroext
 ```
 
 The packaged extension includes runtime PHP, migrations, routes and built assets. You do not need Node or Composer installation to install the package. No live Rust server was used for local verification. Test the first wipe against a disposable Rust server and verify the identity path and egg before enabling production schedules.

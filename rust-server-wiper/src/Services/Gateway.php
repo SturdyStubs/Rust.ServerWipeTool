@@ -36,6 +36,8 @@ interface Gateway
 
     public function playerCount(int $serverId): int;
 
+    public function backupCapacity(int $serverId): array;
+
     public function backupStart(int $serverId, string $name): string;
 
     public function backupStatus(int $serverId, string $uuid): ?bool;

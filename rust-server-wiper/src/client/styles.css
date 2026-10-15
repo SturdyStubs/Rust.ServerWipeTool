@@ -570,3 +570,259 @@
     text-align: left;
   }
 }
+.rsw-clock {
+  font-size: 0.85rem;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+.rsw-clock strong {
+  color: var(--foreground);
+  font-weight: 500;
+}
+.rsw-health {
+  margin: 28px 0;
+  padding: 24px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.rsw-health h3 {
+  margin-top: 0;
+}
+.rsw-health-checks {
+  list-style: none;
+  margin: 16px 0;
+  padding: 0;
+}
+.rsw-health-checks li {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+.rsw-health-checks .rsw-badge {
+  justify-self: start;
+}
+.rsw-health-checks strong {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+.rsw-health-pass {
+  color: var(--primary);
+}
+.rsw-health-fail {
+  color: var(--destructive);
+}
+.rsw-health-warning,
+.rsw-health-pending {
+  color: var(--foreground);
+}
+.rsw-import-paths {
+  max-height: 320px;
+  overflow: auto;
+  padding: 16px;
+  background: var(--muted);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 0.85rem;
+}
+.rsw-import-warnings {
+  padding-left: 20px;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+.rsw-field:has(> select) {
+  margin-top: 16px;
+}
+@media (max-width: 640px) {
+  .rsw-health-checks li {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .rsw-field input[type="datetime-local"],
+  .rsw-field input[type="date"] {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+.rsw-page h4 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 20px 0 12px;
+}
+.rsw-announcement-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin: 20px 0 24px;
+  border-bottom: 1px solid var(--border);
+}
+.rsw-announcement-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.rsw-announcement-toolbar .rsw-check {
+  margin: 0;
+}
+.rsw-webhook-row {
+  padding: 20px 0;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.rsw-announcement-item {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+.rsw-announcement-item > summary {
+  font-weight: 600;
+  padding: 6px 0;
+}
+.rsw-announcement-item[open] > summary {
+  margin-bottom: 20px;
+}
+.rsw-embed-editor {
+  padding: 16px 0;
+  margin: 20px 0;
+  border-top: 1px solid var(--border);
+}
+.rsw-embed-editor > .rsw-heading {
+  align-items: center;
+}
+.rsw-embed-editor h4 {
+  margin: 0 0 16px;
+}
+.rsw-embed-editor input[type="color"] {
+  width: 64px;
+  padding: 4px;
+}
+.rsw-embed-field {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+.rsw-destination-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 24px;
+}
+.rsw-message-preview {
+  margin-top: 24px;
+  padding: 20px;
+  background: var(--muted);
+  border-radius: 8px;
+}
+.rsw-message-preview h4 {
+  margin-top: 0;
+}
+.rsw-message-preview p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.rsw-discord-embed {
+  margin-top: 16px;
+  padding: 12px 16px;
+  border-left: 1px solid var(--border);
+}
+.rsw-discord-embed h4 {
+  margin: 8px 0;
+}
+.rsw-discord-embed p {
+  margin-bottom: 12px;
+}
+.rsw-discord-embed small {
+  overflow-wrap: anywhere;
+}
+.rsw-epoch {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  background: transparent;
+  color: var(--primary);
+  font: inherit;
+  font-size: 0.8rem;
+  border: 0;
+  padding: 5px 0;
+  cursor: pointer;
+  white-space: nowrap;
+  text-underline-offset: 3px;
+}
+.rsw-epoch code {
+  overflow-wrap: normal;
+}
+.rsw-epoch:hover {
+  text-decoration: underline;
+}
+.rsw-timestamp small {
+  overflow-wrap: anywhere;
+}
+.rsw-page.rsw-timestamp-menu {
+  position: fixed;
+  margin: 0;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--popover, var(--background, var(--muted)));
+  color: var(--foreground);
+  z-index: 1000;
+  max-height: min(420px, calc(100dvh - 32px));
+  overflow-y: auto;
+  max-width: none;
+}
+.rsw-timestamp-menu > p {
+  padding: 8px;
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.rsw-timestamp-menu > button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 8px;
+  background: transparent;
+  color: var(--foreground);
+  border: 0;
+  border-radius: 4px;
+  text-align: left;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-decoration: none !important;
+}
+.rsw-timestamp-menu > button:hover,
+.rsw-timestamp-menu > button:focus-visible {
+  background: var(--muted);
+}
+.rsw-timestamp-menu > button > span {
+  min-width: 0;
+}
+.rsw-timestamp-menu > button > code {
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+.rsw-timestamp-menu small {
+  font-size: 0.75rem;
+}
+.rsw-timestamp-menu > small {
+  padding: 8px;
+}
+@media (max-width: 640px) {
+  .rsw-announcement-nav {
+    gap: 0 16px;
+  }
+  .rsw-announcement-nav .rsw-nav-item {
+    font-size: 0.8rem;
+  }
+  .rsw-timestamp-menu > button {
+    gap: 8px;
+  }
+  .rsw-embed-editor > .rsw-heading {
+    flex-wrap: wrap;
+  }
+}

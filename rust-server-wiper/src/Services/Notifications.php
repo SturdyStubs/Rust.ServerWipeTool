@@ -29,6 +29,9 @@ final class Notifications
     private function deliver(int $serverId, string $event, string $key, array $values): void
     {
         $settings = Settings::forServer($serverId);
+        if ($settings->announcement_config !== null) {
+            return;
+        }
         $options = $settings->options ?? [];
         if (! $settings->discord_webhook || ! in_array($event, $options['discord_events'] ?? ['upcoming', 'completed', 'ready', 'failed'], true)) {
             return;

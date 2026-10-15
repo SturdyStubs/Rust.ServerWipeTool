@@ -2,3 +2,5 @@
 b65b6bb96d2c643d5da100ee21608d9df60088435e459615d497dee47402ec46  rust-server-wiper-source-2.0.0.zip
 a8f704f1cec51380f2c2495a16174de318b82ccabbc31191ace2c5ea4bd2e83e  rust-server-wiper-2.1.0-beta.1.pteroext
 ca791fa8256e029862a096b905eef7435b0d28f1eb5ec7e68818e61c428aaa8a  rust-server-wiper-source-2.1.0-beta.1.zip
+a5bce14cdc030d244830169e525f57fad87913863accbfa0d19da52f8832170f  rust-server-wiper-2.2.0-beta.1.pteroext
+dbc98311c9b5c6fda91ecd7550f675e2944321270968a51688095070f19e605f  rust-server-wiper-2.3.0-beta.1.pteroext

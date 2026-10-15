@@ -133,6 +133,13 @@ final class PanelGateway implements Gateway
         return app(WebRcon::class)->players($host, $port, $password, (bool) ($options['rcon_tls'] ?? false));
     }
 
+    public function backupCapacity(int $serverId): array
+    {
+        $server = $this->server($serverId);
+
+        return ['limit' => (int) $server->backup_limit, 'used' => $server->backups()->nonFailed()->count()];
+    }
+
     public function backupStart(int $serverId, string $name): string
     {
         // An empty ignore string makes Wings apply .pteroignore. A nonempty comment

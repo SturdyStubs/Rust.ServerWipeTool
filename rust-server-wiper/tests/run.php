@@ -282,6 +282,8 @@ DB::table('extensions')->insert(['identifier' => 'rust-server-wiper', 'enabled' 
 $migration = require dirname(__DIR__).'/database/migrations/2026_10_13_000000_create_wiper_tables.php';
 $migration->up();
 (require dirname(__DIR__).'/database/migrations/2026_10_14_000000_add_operations_features.php')->up();
+(require dirname(__DIR__).'/database/migrations/2026_10_15_000000_add_configuration_imports.php')->up();
+(require dirname(__DIR__).'/database/migrations/2026_10_16_000000_add_modular_announcements.php')->up();
 $app->instance(ExtensionRepository::class, new class extends ExtensionRepository
 {
     public function __construct() {}
@@ -526,5 +528,7 @@ test('legacy import is idempotent', function () {
 
 Carbon::setTestNow();
 require __DIR__.'/features.php';
+require __DIR__.'/operations.php';
+require __DIR__.'/announcements.php';
 echo "\n$passed passed, $failed failed.\n";
 exit($failed ? 1 : 0);

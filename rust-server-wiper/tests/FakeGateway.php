@@ -29,6 +29,8 @@ final class FakeGateway implements Gateway
 
     public bool $stopWorks = true;
 
+    public bool $startWorks = true;
+
     public bool $ready = true;
 
     public bool $failDelete = false;
@@ -95,7 +97,7 @@ return $this->directories[$directory] ?? [];
         $this->events[] = ['power', $action];
         if ($action === 'stop' && $this->stopWorks) {
             $this->powerState = 'offline';
-        } if ($action === 'start') {
+        } if ($action === 'start' && $this->startWorks) {
             $this->powerState = 'running';
         }
     }
@@ -148,6 +150,13 @@ return $this->directories[$directory] ?? [];
         }
 
 return $this->players;
+    }
+
+    public array $capacity = ['limit' => 5, 'used' => 0];
+
+    public function backupCapacity(int $serverId): array
+    {
+        return $this->capacity;
     }
 
     public function backupStart(int $serverId, string $name): string

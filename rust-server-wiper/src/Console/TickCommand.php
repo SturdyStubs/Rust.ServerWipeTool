@@ -14,6 +14,7 @@ use RustServerWiper\Models\Restoration;
 use RustServerWiper\Models\Run;
 use RustServerWiper\Models\Settings;
 use RustServerWiper\Models\Wipe;
+use RustServerWiper\Services\Announcements;
 use RustServerWiper\Services\Gateway;
 use RustServerWiper\Services\Notifications;
 use RustServerWiper\Services\Recurrence;
@@ -34,12 +35,13 @@ final class TickCommand extends Command
         $errors = false;
         try {
             $now = now('UTC')->startOfMinute();
-            Wipe::query()->where('enabled', true)->whereNotNull('next_run_at')->where('next_run_at', '<=', $now->copy()->addDay())
+            Wipe::query()->where('enabled', true)->whereNotNull('next_run_at')->where('next_run_at', '<=', $now->copy()->addDays(7))
                 ->orderBy('id')->chunkById(100, function ($wipes) use ($gateway, $now, &$errors): void {
                     foreach ($wipes as $wipe) {
                         try {
                             $due = $wipe->next_run_at;
                             if ($due > $now) {
+                                app(Announcements::class)->reminder($wipe, $now);
                                 $options = Settings::forServer($wipe->server_id)->options ?? [];
                                 if ($due->subMinutes($options['discord_minutes'] ?? 30)->equalTo($now)) {
                                     app(Notifications::class)->send($wipe->server_id, 'upcoming', 'wipe:'.$wipe->id.':'.$due->timestamp, ['label' => $wipe->label, 'time' => $due->setTimezone($wipe->timezone)->format('Y-m-d H:i T'), 'message' => 'Upcoming wipe at '.$due->setTimezone($wipe->timezone)->format('Y-m-d H:i T')]);
@@ -87,6 +89,11 @@ final class TickCommand extends Command
             Run::query()->where('status', 'queued')->where('created_at', '<', $now->copy()->subMinutes(15))->update([
                 'status' => 'missed', 'message' => 'Queue execution was delayed over 15 minutes; skipped.', 'finished_at' => $now,
             ]);
+            Run::query()->whereIn('status', ['failed', 'startup_failed', 'missed'])->where('finished_at', '>=', $now->copy()->subMinutes(2))->chunkById(100, function ($runs): void {
+                foreach ($runs as $run) {
+                    app(Announcements::class)->run($run, 'failed');
+                }
+            });
             Run::query()->whereIn('status', ['queued', 'deferred'])->where(fn ($q) => $q->whereNull('not_before')->orWhere('not_before', '<=', $now))->orderBy('id')->chunkById(100, function ($runs): void {
                 foreach ($runs as $run) {
                     ExecuteWipe::dispatch($run->id);
@@ -97,6 +104,8 @@ final class TickCommand extends Command
         } finally {
             $lock->release();
         }
+
+        Cache::put('rust-server-wiper:scheduler-heartbeat', now('UTC')->timestamp, 600);
 
         return $errors ? 1 : 0;
     }

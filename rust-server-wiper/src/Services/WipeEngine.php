@@ -25,7 +25,8 @@ final class WipeEngine
         return ['files' => $files, 'count' => count($files), 'patterns' => Paths::patterns($payload)];
     }
 
-    public function execute(int $serverId, array $payload, string $timezone, array $maps, callable $allowed, callable $progress, array $context = []): array
+    /** Read-only execution preflight, shared with the health check. */
+    public function preflight(int $serverId, array $payload, string $timezone, array $maps, array $context = []): array
     {
         $this->gateway->assertReady($serverId);
         $environment = $this->gateway->environment($serverId);
@@ -69,10 +70,17 @@ final class WipeEngine
         if (isset($changes['WORLD_SEED'])) {
             Paths::resolve([$configPath], fn ($root) => $this->gateway->list($serverId, $root));
         }
+
+        return compact('environment', 'changes', 'patterns', 'configPath', 'level') + ['selection' => $selection ?? null];
+    }
+
+    public function execute(int $serverId, array $payload, string $timezone, array $maps, callable $allowed, callable $progress, array $context = []): array
+    {
+        ['environment' => $environment, 'changes' => $changes, 'patterns' => $patterns, 'configPath' => $configPath, 'level' => $level, 'selection' => $selection] = $this->preflight($serverId, $payload, $timezone, $maps, $context);
         if (! $allowed()) {
             throw new RuntimeException('The extension or schedule was disabled before execution.');
         }
-        $progress('Stopping the server.');
+        $progress('Stopping the server.', null, ['event' => 'wiping']);
         if (! in_array($this->gateway->state($serverId), ['offline', 'stopped'], true)) {
             $this->gateway->power($serverId, 'stop');
         }
@@ -154,13 +162,19 @@ final class WipeEngine
         $this->gateway->sync($serverId);
         $this->gateway->power($serverId, 'start');
         $result['readiness'] = 'start_accepted';
-        if (($payload['readiness'] ?? 'none') !== 'none') {
+        if (($payload['readiness'] ?? 'none') !== 'none' || ($context['observe_running'] ?? false)) {
             $progress('Start accepted; verifying server readiness.', $result);
             $deadline = hrtime(true) + 300_000_000_000;
             $ready = false;
+            $announcedRunning = false;
             for ($attempt = 0; $attempt < 150 && hrtime(true) < $deadline; $attempt++) {
                 try {
-                    $ready = $this->gateway->state($serverId) === 'running' && (($payload['readiness'] === 'wings') || $this->gateway->playerCount($serverId) >= 0);
+                    $running = $this->gateway->state($serverId) === 'running';
+                    if ($running && ! $announcedRunning) {
+                        $announcedRunning = true;
+                        $progress('Server is running after the wipe.', $result, ['event' => 'wiped']);
+                    }
+                    $ready = $running && (($payload['readiness'] ?? 'none') !== 'rcon' || $this->gateway->playerCount($serverId) >= 0);
                 } catch (\Throwable) {
                     $ready = false;
                 }
@@ -169,7 +183,7 @@ final class WipeEngine
                 }
                 $this->gateway->wait();
             }
-            $result['readiness'] = $ready ? ($payload['readiness'] === 'rcon' ? 'rust_ready' : 'process_running') : 'timed_out';
+            $result['readiness'] = $ready ? (($payload['readiness'] ?? 'none') === 'rcon' ? 'rust_ready' : 'process_running') : 'timed_out';
             $progress($ready ? 'Readiness check passed.' : 'Readiness timed out. Files were wiped; inspect server startup.', $result);
         }
 

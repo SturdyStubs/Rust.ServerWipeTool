@@ -17,6 +17,7 @@ import {
 import {
   addFile,
   blankDraft,
+  describeRule,
   localInput,
   type Draft,
   type FileEntry,
@@ -27,7 +28,11 @@ import {
 } from "./types";
 import WipeOptions from "./WipeOptions";
 import SettingsPanel from "./SettingsPanel";
+import DiscordTimestamp from "./DiscordTimestamp";
 import MapRules from "./MapRules";
+import TimezoneField from "./TimezoneField";
+import HealthPanel from "./HealthPanel";
+import ConfigurationPanel from "./ConfigurationPanel";
 
 const weekdays = [
   "Monday",
@@ -128,6 +133,8 @@ export default function WipesScreen() {
   const [notice, setNotice] = useState("");
   const [preview, setPreview] = useState<Preview | null>(null);
   const [confirmed, setConfirmed] = useState(false);
+  const [repeatKind, setRepeatKind] = useState("monthly");
+  const [anchor, setAnchor] = useState("");
   const [week, setWeek] = useState("1");
   const [weekday, setWeekday] = useState("4");
   const [clock, setClock] = useState("14:00");
@@ -292,6 +299,7 @@ export default function WipesScreen() {
             ["schedules", "Schedules"],
             ["maps", "Map library"],
             ["history", "Activity & backups"],
+            ...(can("schedule") ? [["configuration", "Import / export"]] : []),
             ...(can("configure") ? [["settings", "Settings"]] : []),
           ].map(([id, label]) => (
             <button
@@ -358,7 +366,9 @@ export default function WipesScreen() {
                       <td>
                         <strong>{wipe.label}</strong>
                         <small>
-                          {wipe.repeat.length ? "Monthly repeat" : "One time"}
+                          {wipe.repeat.length
+                            ? wipe.repeat.map(describeRule).join("; ")
+                            : "One time"}
                           {wipe.payload.blueprints
                             ? " · Includes blueprints"
                             : ""}
@@ -367,6 +377,10 @@ export default function WipesScreen() {
                       <td>
                         {date(wipe.next_run_at, wipe.timezone)}
                         <small>{wipe.timezone}</small>
+                        <DiscordTimestamp
+                          iso={wipe.next_run_at}
+                          label={wipe.label}
+                        />
                       </td>
                       <td>
                         <span
@@ -405,6 +419,30 @@ export default function WipesScreen() {
                           >
                             {wipe.enabled ? "Pause" : "Enable"}
                           </Button>
+                          {wipe.enabled && wipe.next_run_at && (
+                            <Button
+                              size="small"
+                              isSecondary
+                              disabled={busy || !can("schedule")}
+                              onClick={() => {
+                                if (
+                                  window.confirm(
+                                    `Skip the next occurrence of "${wipe.label}"? ${wipe.repeat.length ? "Later repeats will stay scheduled." : "This one-time wipe will not run."}`,
+                                  )
+                                )
+                                  void action(
+                                    () =>
+                                      http.post(
+                                        `${base}/wipes/${wipe.id}/skip`,
+                                        { expected_at: wipe.next_run_at },
+                                      ),
+                                    "Next wipe skipped.",
+                                  );
+                              }}
+                            >
+                              Skip next
+                            </Button>
+                          )}
                           <Button
                             size="small"
                             color="red"
@@ -476,7 +514,7 @@ export default function WipesScreen() {
                   [
                     "Name this wipe and choose what will be removed. A preset fills in common file patterns for you.",
                     "Keep your current settings or choose the map players will join after the wipe.",
-                    "Choose a date or monthly repeat. Configure backup, startup, and player safeguards.",
+                    "Choose a date or repeat rule. Configure backup, startup, and player safeguards.",
                     "Check the plan. Save it for later, or preview the files before wiping now.",
                   ][step]
                 }
@@ -767,24 +805,12 @@ export default function WipesScreen() {
                       Set a date for a scheduled wipe. To wipe now, leave the
                       date blank and continue to Review.
                     </p>
-                    <Field
-                      label="Timezone"
-                      help="All dates and repeat rules use this timezone."
-                    >
-                      <input
-                        list="rsw-timezones"
-                        required
-                        value={draft.timezone}
-                        onChange={(e) =>
-                          setDraft({ ...draft, timezone: e.target.value })
-                        }
-                      />
-                      <datalist id="rsw-timezones">
-                        {overview.data?.timezones.map((z) => (
-                          <option key={z} value={z} />
-                        ))}
-                      </datalist>
-                    </Field>
+                    <TimezoneField
+                      value={draft.timezone}
+                      onChange={(timezone) => setDraft({ ...draft, timezone })}
+                      timezones={overview.data?.timezones}
+                      serverNow={overview.data?.server_now}
+                    />
                     <Field label="One-time date and time">
                       <input
                         type="datetime-local"
@@ -795,35 +821,82 @@ export default function WipesScreen() {
                         }
                       />
                     </Field>
+                    <Button
+                      size="small"
+                      isSecondary
+                      disabled={
+                        draft.repeat.length > 0 || !overview.data?.server_now
+                      }
+                      onClick={() => {
+                        if (!overview.data?.server_now) return;
+                        const at =
+                          Date.parse(overview.data.server_now) +
+                          Math.max(0, Date.now() - overview.dataUpdatedAt) +
+                          5 * 60000;
+                        setDraft({
+                          ...draft,
+                          time: localInput(
+                            new Date(at).toISOString(),
+                            draft.timezone,
+                          ),
+                        });
+                      }}
+                    >
+                      Set to five minutes from now
+                    </Button>
+                    <Field label="Repeat frequency">
+                      <select
+                        value={repeatKind}
+                        onChange={(e) => setRepeatKind(e.target.value)}
+                      >
+                        <option value="monthly">Monthly weekday</option>
+                        <option value="weekly">Every week</option>
+                        <option value="fortnightly">Every 14 days</option>
+                      </select>
+                    </Field>
                     <p>
-                      Or repeat on an ordinal weekday each month. A fifth
-                      weekday is skipped in months where it does not exist.
+                      Add repeat rules instead of a one-time date. Monthly fifth
+                      weekdays and nonexistent daylight-saving times are
+                      skipped. Every 14 days stays anchored to the first date.
                     </p>
                     <div className="rsw-rule">
-                      <Field label="Week">
-                        <select
-                          value={week}
-                          onChange={(e) => setWeek(e.target.value)}
-                        >
-                          {ordinals.map((w, i) => (
-                            <option key={w} value={i + 1}>
-                              {w}
-                            </option>
-                          ))}
-                        </select>
-                      </Field>
-                      <Field label="Day">
-                        <select
-                          value={weekday}
-                          onChange={(e) => setWeekday(e.target.value)}
-                        >
-                          {weekdays.map((d, i) => (
-                            <option key={d} value={i + 1}>
-                              {d}
-                            </option>
-                          ))}
-                        </select>
-                      </Field>
+                      {repeatKind === "monthly" && (
+                        <Field label="Week">
+                          <select
+                            value={week}
+                            onChange={(e) => setWeek(e.target.value)}
+                          >
+                            {ordinals.map((w, i) => (
+                              <option key={w} value={i + 1}>
+                                {w}
+                              </option>
+                            ))}
+                          </select>
+                        </Field>
+                      )}
+                      {repeatKind !== "fortnightly" && (
+                        <Field label="Day">
+                          <select
+                            value={weekday}
+                            onChange={(e) => setWeekday(e.target.value)}
+                          >
+                            {weekdays.map((d, i) => (
+                              <option key={d} value={i + 1}>
+                                {d}
+                              </option>
+                            ))}
+                          </select>
+                        </Field>
+                      )}
+                      {repeatKind === "fortnightly" && (
+                        <Field label="First repeat date">
+                          <input
+                            type="date"
+                            value={anchor}
+                            onChange={(e) => setAnchor(e.target.value)}
+                          />
+                        </Field>
+                      )}
                       <Field label="Time">
                         <input
                           type="time"
@@ -834,6 +907,7 @@ export default function WipesScreen() {
                       <Button
                         size="small"
                         isSecondary
+                        disabled={repeatKind === "fortnightly" && !anchor}
                         onClick={() => {
                           if (clock)
                             setDraft({
@@ -842,7 +916,9 @@ export default function WipesScreen() {
                               repeat: [
                                 ...new Set([
                                   ...draft.repeat,
-                                  `${week} ${weekday} ${clock}`,
+                                  repeatKind === "monthly"
+                                    ? `${week} ${weekday} ${clock}`
+                                    : `${repeatKind} ${repeatKind === "weekly" ? weekday : anchor} ${clock}`,
                                 ]),
                               ],
                             });
@@ -853,13 +929,9 @@ export default function WipesScreen() {
                     </div>
                     <ul className="rsw-rules">
                       {draft.repeat.map((rule) => {
-                        const [w, d, t] = rule.split(" ");
                         return (
                           <li key={rule}>
-                            <span>
-                              {ordinals[Number(w) - 1]}{" "}
-                              {weekdays[Number(d) - 1]} at {t}
-                            </span>
+                            <span>{describeRule(rule)}</span>
                             <button
                               type="button"
                               aria-label={`Remove repeat ${rule}`}
@@ -1013,12 +1085,7 @@ export default function WipesScreen() {
                         <dt>Timing</dt>
                         <dd>
                           {draft.repeat.length
-                            ? draft.repeat
-                                .map((rule) => {
-                                  const [w, d, t] = rule.split(" ");
-                                  return `${ordinals[Number(w) - 1]} ${weekdays[Number(d) - 1]} at ${t}`;
-                                })
-                                .join("; ")
+                            ? draft.repeat.map(describeRule).join("; ")
                             : draft.time.replace("T", " at ") ||
                               "Run now after preview"}{" "}
                           ({draft.timezone})
@@ -1042,6 +1109,11 @@ export default function WipesScreen() {
                       startup changes, then starts the server. Previewing files
                       does not change the server.
                     </p>
+                    <HealthPanel
+                      base={base}
+                      draft={draft}
+                      disabled={busy || (!can("schedule") && !can("execute"))}
+                    />
                     <div className="rsw-form-actions">
                       <Button
                         type="submit"
@@ -1270,6 +1342,7 @@ export default function WipesScreen() {
                     <span>
                       {date(event.at, event.timezone)} · {event.timezone}
                     </span>
+                    <DiscordTimestamp iso={event.at} label={event.label} />
                     {event.conflict && (
                       <strong className="rsw-failed">
                         Overlaps another wipe
@@ -1297,6 +1370,15 @@ export default function WipesScreen() {
             </section>
           )}
         </div>
+        {view === "configuration" && can("schedule") && (
+          <ConfigurationPanel
+            base={base}
+            identity={overview.data?.identity?.path ?? "/server/rust"}
+            onImported={() => {
+              void overview.refetch();
+            }}
+          />
+        )}
         {view === "settings" && can("configure") && (
           <SettingsPanel base={base} />
         )}

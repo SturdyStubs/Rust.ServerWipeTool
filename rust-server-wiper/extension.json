@@ -2,7 +2,7 @@
   "$schema": "./node_modules/@pterodactyl/sdk/manifest.schema.json",
   "id": "rust-server-wiper",
   "name": "Rust Server Wiper",
-  "version": "2.1.0-beta.1",
+  "version": "2.3.0-beta.1",
   "description": "Scheduled Rust wipes, map rotation, announcements, deletion previews and run history.",
   "icon": "calendar-clock",
   "requires": {

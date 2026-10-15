@@ -25,3 +25,16 @@ Route::post('/settings/probe', [FeaturesController::class, 'probe']);
 Route::get('/runs/{runId}/report', [FeaturesController::class, 'report'])->whereNumber('runId');
 Route::post('/runs/{runId}/restore', [FeaturesController::class, 'restore'])->whereNumber('runId');
 Route::post('/maintenance/recover', [FeaturesController::class, 'recover']);
+
+Route::post('/health', [\RustServerWiper\Http\HealthController::class, 'check']);
+Route::get('/health/probes/{probeId}', [\RustServerWiper\Http\HealthController::class, 'probe']);
+Route::get('/configuration/export', [\RustServerWiper\Http\ConfigurationController::class, 'export']);
+Route::post('/configuration/preview', [\RustServerWiper\Http\ConfigurationController::class, 'preview']);
+Route::post('/configuration/import', [\RustServerWiper\Http\ConfigurationController::class, 'import']);
+Route::post('/wipes/{wipeId}/skip', [WiperController::class, 'skip'])->whereNumber('wipeId');
+
+Route::get('/announcements', [\RustServerWiper\Http\AnnouncementsController::class, 'index']);
+Route::put('/announcements', [\RustServerWiper\Http\AnnouncementsController::class, 'save']);
+Route::post('/announcements/preview', [\RustServerWiper\Http\AnnouncementsController::class, 'preview']);
+Route::post('/announcements/probe', [\RustServerWiper\Http\AnnouncementsController::class, 'probe']);
+Route::get('/announcements/probes/{probeId}', [\RustServerWiper\Http\AnnouncementsController::class, 'probeStatus']);

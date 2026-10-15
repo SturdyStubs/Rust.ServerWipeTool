@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace RustServerWiper\Http;
 
-use DateTimeImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use RustServerWiper\Services\Paths;
@@ -18,7 +17,7 @@ final class WipeInput
         $data = $request->validate([
             'label' => 'required|string|max:191', 'timezone' => 'required|timezone:all',
             'enabled' => 'required|boolean', 'time' => 'nullable|date_format:Y-m-d\TH:i',
-            'repeat' => 'present|array|max:35', 'repeat.*' => ['string', 'distinct', 'regex:/^[1-5] [1-7] ([01][0-9]|2[0-3]):[0-5][0-9]$/D'],
+            'repeat' => 'present|array|max:35', 'repeat.*' => ['string', 'distinct', 'regex:/^(?:[1-5] [1-7]|weekly [1-7]|fortnightly [0-9]{4}-[0-9]{2}-[0-9]{2}) ([01][0-9]|2[0-3]):[0-5][0-9]$/D'],
             'payload' => 'required|array:name,description,size,seed,random_seed,random_level,level,files,blueprints,identity_path,commands,backup,backup_timeout,readiness,map_mode,exclude_recent,wait_players,max_deferral,deadline_action,unknown_players',
             'payload.name' => 'nullable|string|max:191', 'payload.description' => 'nullable|string|max:10000',
             'payload.size' => 'nullable|integer|min:1000|max:10000', 'payload.seed' => 'nullable|integer|min:0|max:2147483647',
@@ -48,20 +47,23 @@ final class WipeInput
             if (! $patterns) {
                 throw new \InvalidArgumentException('Select wipe files or enable blueprint deletion.');
             }
+            if ($data['repeat']) {
+                Recurrence::next($data['repeat'], $data['timezone'], now('UTC')->toDateTimeImmutable());
+            }
             if ($immediate) {
-                $next = new DateTimeImmutable('now', new \DateTimeZone('UTC'));
+                $next = now('UTC')->toDateTimeImmutable();
             } elseif ($data['repeat']) {
                 if (! empty($data['time'])) {
-                    throw new \InvalidArgumentException('Use a one-time date or monthly repeat rules, not both.');
+                    throw new \InvalidArgumentException('Use a one-time date or repeat rules, not both.');
                 }
-                $next = Recurrence::next($data['repeat'], $data['timezone'], new DateTimeImmutable('now'));
+                $next = Recurrence::next($data['repeat'], $data['timezone'], now('UTC')->toDateTimeImmutable());
             } else {
                 if (empty($data['time'])) {
-                    throw new \InvalidArgumentException('Select a one-time date or monthly repeat rules.');
+                    throw new \InvalidArgumentException('Select a one-time date or repeat rules.');
                 }
                 $next = Recurrence::localTime($data['time'], $data['timezone']);
-                if ($next <= new DateTimeImmutable('now')) {
-                    throw new \InvalidArgumentException('The scheduled time must be in the future.');
+                if ($next <= now('UTC')->toDateTimeImmutable()) {
+                    throw new \InvalidArgumentException('The selected time '.$data['time'].' in '.$data['timezone'].' is not in the future. Server time in that timezone is '.now('UTC')->setTimezone($data['timezone'])->format('Y-m-d H:i:s').'. Check the timezone and choose a later time.');
                 }
             }
         } catch (Throwable $e) {

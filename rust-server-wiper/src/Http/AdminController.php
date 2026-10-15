@@ -42,7 +42,7 @@ final class AdminController
             $rows[] = ['id' => $server->id, 'name' => $server->name, 'identity' => Identity::detect($server->startup ?? '', $env)];
         }
 
-        return new JsonResponse(['servers' => $rows, 'has_more' => $servers->hasMorePages(), 'page' => $servers->currentPage(),
+        return new JsonResponse(['timezones' => \DateTimeZone::listIdentifiers(\DateTimeZone::ALL), 'server_now' => now('UTC')->toAtomString(), 'servers' => $rows, 'has_more' => $servers->hasMorePages(), 'page' => $servers->currentPage(),
             'presets' => Preset::query()->orderBy('name')->limit(500)->get(),
             'runs' => Run::query()->latest('id')->limit(100)->get()->map(fn ($r) => Reports::export($r))]);
     }
@@ -93,7 +93,7 @@ final class AdminController
 
     public function preview(Request $r): JsonResponse
     {
-        return new JsonResponse(['servers' => $this->plan($r)]);
+        return new JsonResponse(['timezones' => \DateTimeZone::listIdentifiers(\DateTimeZone::ALL), 'server_now' => now('UTC')->toAtomString(), 'servers' => $this->plan($r)]);
     }
 
     public function store(Request $r): JsonResponse
@@ -122,6 +122,6 @@ final class AdminController
             }
         }
 
-        return new JsonResponse(['servers' => $results],201);
+        return new JsonResponse(['timezones' => \DateTimeZone::listIdentifiers(\DateTimeZone::ALL), 'server_now' => now('UTC')->toAtomString(), 'servers' => $results], 201);
     }
 }
