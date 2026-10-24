@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Schema;
 if (($argv[1] ?? '') !== '--stage') {
     $panel = realpath($argv[1] ?? dirname(__DIR__, 2).'/.reference-panel');
     $old = realpath($argv[2] ?? dirname(__DIR__, 2).'/rust-server-wiper-2.0.0.pteroext');
-    $new = realpath($argv[3] ?? dirname(__DIR__, 2).'/rust-server-wiper-2.3.0-beta.1.pteroext');
+    $new = realpath($argv[3] ?? dirname(__DIR__, 2).'/rust-server-wiper-2.3.1-beta.1.pteroext');
     if (! $panel || ! $old || ! $new) {
         fwrite(STDERR, "Usage: php tests/upgrade.php /path/to/disposable/panel baseline.pteroext new.pteroext\n");
         exit(1);
@@ -61,7 +61,7 @@ if ($stage === 'baseline') {
     }
 } else {
     $record = DB::table('extensions')->where('identifier', 'rust-server-wiper')->first();
-    if ($record->version !== '2.3.0-beta.1' || ! $record->enabled || $record->error) {
+    if ($record->version !== '2.3.1-beta.1' || ! $record->enabled || $record->error) {
         throw new RuntimeException('Upgrade failed to load the new provider: '.($record->error ?? 'version/state mismatch'));
     }
     foreach (['wipes' => 'Preserved schedule', 'maps' => 'Preserved map', 'runs' => 'Preserved history'] as $table => $value) {

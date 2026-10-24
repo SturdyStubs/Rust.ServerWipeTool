@@ -749,3 +749,30 @@ it("timestamp menu supports keyboard navigation and reports clipboard failures",
   expect(screen.queryByRole("menu")).toBeNull();
   expect(document.activeElement).toBe(trigger);
 });
+
+it("renders the saved Phoenix late-night time and epoch without a day or timezone shift", async () => {
+  mock.get.mockResolvedValue({
+    data: {
+      ...overview,
+      wipes: [
+        {
+          ...blankDraft(),
+          id: 1,
+          label: "Phoenix late night",
+          timezone: "America/Phoenix",
+          repeat: [],
+          enabled: true,
+          next_run_at: "2026-10-15T06:56:00.000000Z",
+        },
+      ],
+    },
+  });
+  mount();
+  expect(await screen.findByText("Oct 14, 2026, 11:56 PM")).toBeTruthy();
+  expect(screen.getByText("1792047360", { exact: false })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Edit", exact: true }));
+  step("Timing & safeguards");
+  expect(
+    (screen.getByLabelText("One-time date and time") as HTMLInputElement).value,
+  ).toBe("2026-10-14T23:56");
+});

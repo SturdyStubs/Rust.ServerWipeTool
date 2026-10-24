@@ -1,3 +1,9 @@
+# 2.3.1-beta.1
+
+- Fix UTC database timestamps being interpreted in APP_TIMEZONE after save/reload, causing a seven-hour shift on Phoenix panels.
+- Normalize extension model timestamp reads and writes to UTC, including queue-age timestamps; preserve selected local recurrence/display timezones.
+- Add save/reload/calendar/execution and late-night UI regressions. No database rewrite or schema migration. Pause affected test schedules before upgrading and choose a new future time after reload; restart workers.
+
 # 2.3.0-beta.1
 
 - Named encrypted Discord webhook destinations, reusable message/embed presets and modular event rules.

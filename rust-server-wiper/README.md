@@ -1,4 +1,4 @@
-# Rust Server Wiper 2.3.0-beta.1
+# Rust Server Wiper 2.3.1-beta.1
 
 Read [FEATURES-2.3.md](FEATURES-2.3.md) for modular webhook announcements, embeds and timestamp copying, and [FEATURES-2.2.md](FEATURES-2.2.md) for health checks, configuration transfer, timezone changes and scheduling improvements. [FEATURES-2.1.md](FEATURES-2.1.md) covers the existing permissions, safeguards and queue requirements. This is a beta pending live server verification.
 
@@ -23,10 +23,10 @@ Tested against **Pterodactyl 2.0.0-beta.1**, commit `65913c6aac5367a35f48b4448f0
    php artisan queue:restart
    ```
 
-3. Upload `rust-server-wiper-2.3.0-beta.1.pteroext` in **Admin → Extensions → Install** and select **Enable**. Alternatively:
+3. Upload `rust-server-wiper-2.3.1-beta.1.pteroext` in **Admin → Extensions → Install** and select **Enable**. Alternatively:
 
    ```sh
-   php artisan p:extension:install /path/to/rust-server-wiper-2.3.0-beta.1.pteroext --enable
+   php artisan p:extension:install /path/to/rust-server-wiper-2.3.1-beta.1.pteroext --enable
    chown -R www-data:www-data extensions public/assets/extensions
    ```
 
@@ -50,11 +50,13 @@ Back up the panel database and retain your previous package. Check the queue req
 
 ```sh
 cd /var/www/pterodactyl
-php artisan p:extension:install /path/to/rust-server-wiper-2.3.0-beta.1.pteroext --replace --enable
+php artisan p:extension:install /path/to/rust-server-wiper-2.3.1-beta.1.pteroext --replace --enable
 php artisan queue:restart
 ```
 
-The migrations preserve schedules, maps and run history. Locally verified upgrade paths are 2.0.0 → 2.3.0-beta.1 and 2.2.0-beta.1 → 2.3.0-beta.1. Configure the additional delivery worker before saving modular announcement settings. Legacy Discord settings keep their previous behavior until **Save announcements** is selected. Reload open panel tabs after upgrading and review health checks before the next scheduled wipe.
+**Timezone hotfix:** pause affected test schedules before updating; after reloading, verify the displayed time and pick a new future time if needed. Version 2.3.1 fixes the saved-time shift without rewriting database values or changing the panel timezone. See [hotfix details](FEATURES-2.3.1.md).
+
+The migrations preserve schedules, maps and run history. Locally verified upgrade paths are 2.0.0 → 2.3.1-beta.1 and 2.2.0-beta.1 → 2.3.1-beta.1. Configure the additional delivery worker before saving modular announcement settings. Legacy Discord settings keep their previous behavior until **Save announcements** is selected. Reload open panel tabs after upgrading and review health checks before the next scheduled wipe.
 
 Restoring an older package does not reverse database migrations. If rollback is necessary, restore the matching database backup during a maintenance window after reviewing server state. Do not replay an interrupted wipe to test an upgrade.
 
@@ -146,7 +148,7 @@ Run package checks with the panel:
 
 ```sh
 php artisan p:extension:doctor /path/to/rust-server-wiper
-php artisan p:extension:pack /path/to/rust-server-wiper --output=/path/to/rust-server-wiper-2.3.0-beta.1.pteroext
+php artisan p:extension:pack /path/to/rust-server-wiper --output=/path/to/rust-server-wiper-2.3.1-beta.1.pteroext
 ```
 
 The packaged extension includes runtime PHP, migrations, routes and built assets. You do not need Node or Composer installation to install the package. No live Rust server was used for local verification. Test the first wipe against a disposable Rust server and verify the identity path and egg before enabling production schedules.

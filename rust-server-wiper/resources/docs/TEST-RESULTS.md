@@ -1,3 +1,19 @@
+# Verification results - 2.3.1-beta.1
+
+| Check | Result |
+| --- | --- |
+| PHP regression/integration suite | 156 passed |
+| React interface regression suite | 27 passed |
+| TypeScript and production build | Pass |
+| Native doctor, fresh install and provider boot | Pass |
+| Data-preserving upgrades from 2.0.0, 2.2.0-beta.1 and 2.3.0-beta.1 | Pass |
+
+Reproduced the reported seven-hour shift with a Phoenix panel default: entered 2026-10-14 23:56, expected epoch 1792047360, previously returned 1792072560. Added create/JSON/reload/calendar regressions under Phoenix and Paris defaults, timestamp/offset/null conversion checks for operational models, exact-instant scheduler execution and UTC run creation timestamps, plus UI checks for local date, epoch and edit-field round-trip.
+
+All daemon/server operations in these tests are simulated in a disposable reference panel. An existing local WebRCON socket test timed out once during development; the subsequent full suite passed. No live schedules were changed, no Discord messages were sent, and live deployment remains unverified.
+
+---
+
 # Verification results - 2.3.0-beta.1
 
 Verified locally on October 14, 2026 against the same disposable panel checkout described below.

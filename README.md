@@ -4,9 +4,9 @@ Schedule and manage Rust server wipes from Pterodactyl. Review the files, choose
 
 This is a **native Pterodactyl 2 extension**. Installation uses the panel's extension manager; no panel source patches, Blueprint installation or panel frontend rebuild is required.
 
-**Current package: 2.3.0-beta.1.** Locally verified prerelease; live Rust/Wings and Discord delivery checks remain open. Use a disposable server before enabling production schedules.
+**Current package: 2.3.1-beta.1.** Locally verified prerelease; live Rust/Wings and Discord delivery checks remain open. Use a disposable server before enabling production schedules.
 
-[Download the extension](rust-server-wiper-2.3.0-beta.1.pteroext) · [Installation and operator guide](rust-server-wiper/README.md) · [Latest changes](rust-server-wiper/FEATURES-2.3.md) · [Verification results](rust-server-wiper/resources/docs/TEST-RESULTS.md)
+[Download the extension](rust-server-wiper-2.3.1-beta.1.pteroext) · [Installation and operator guide](rust-server-wiper/README.md) · [Latest changes](rust-server-wiper/FEATURES-2.3.1.md) · [Verification results](rust-server-wiper/resources/docs/TEST-RESULTS.md)
 
 ## What you can do
 
@@ -38,11 +38,11 @@ See [the operator guide](rust-server-wiper/README.md#install) for custom egg dis
 
 1. Back up the panel database. Disable the old auto-wiper cron/job if upgrading from the original addon.
 2. Keep the panel's minute scheduler and `standard` queue worker running. Set the queue reservation above the wipe job's **1,200-second timeout**, for example `REDIS_QUEUE_RETRY_AFTER=1260`, then rebuild the panel configuration cache and restart workers. All processes must share an asynchronous queue and persistent cache. See [queue setup](rust-server-wiper/README.md#install) for other drivers.
-3. Download the [2.3.0-beta.1 package](rust-server-wiper-2.3.0-beta.1.pteroext) and verify its [SHA-256 checksum](rust-server-wiper-2.3.0-beta.1.sha256). Upload it under **Admin → Extensions → Install** and enable it, or use the panel CLI:
+3. Download the [2.3.1-beta.1 package](rust-server-wiper-2.3.1-beta.1.pteroext) and verify its [SHA-256 checksum](rust-server-wiper-2.3.1-beta.1.sha256). Upload it under **Admin → Extensions → Install** and enable it, or use the panel CLI:
 
    ```sh
    cd /var/www/pterodactyl
-   php artisan p:extension:install /path/to/rust-server-wiper-2.3.0-beta.1.pteroext --enable
+   php artisan p:extension:install /path/to/rust-server-wiper-2.3.1-beta.1.pteroext --enable
    ```
 
 4. For Discord announcements, configure a **separate supervised process**:
@@ -91,7 +91,7 @@ php tests/run.php /path/to/a/disposable/pterodactyl-checkout
 
 The PHP suite needs an uncached disposable panel checkout with Composer dependencies and SQLite support. It uses an isolated database and simulated daemon. Never point these tests at a production panel. See [development and packaging](rust-server-wiper/README.md#development-and-verification) for the native extension doctor and pack commands.
 
-Current local results: **152 PHP tests and 26 React tests passed**, along with type checking, production build, desktop/mobile browser checks, native installation and upgrades from 2.0 and 2.2. Live backup/restore, Rust startup, asynchronous delivery and Discord rendering remain staging requirements.
+Current local results: **156 PHP tests and 27 React tests passed**, along with type checking, production build, desktop/mobile browser checks, native installation and upgrades from 2.0 and 2.2. Live backup/restore, Rust startup, asynchronous delivery and Discord rendering remain staging requirements.
 
 ## Provenance
 

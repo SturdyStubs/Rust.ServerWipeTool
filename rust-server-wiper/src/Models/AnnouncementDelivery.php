@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace RustServerWiper\Models;
 
-use Illuminate\Database\Eloquent\Model;
-
-final class AnnouncementDelivery extends Model
+final class AnnouncementDelivery extends UtcModel
 {
     protected $table = 'ext_rust_server_wiper_notifications';
 

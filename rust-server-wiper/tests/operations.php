@@ -10,7 +10,9 @@ use RustServerWiper\Http\ConfigurationController;
 use RustServerWiper\Http\HealthController;
 use RustServerWiper\Http\WipeInput;
 use RustServerWiper\Http\WiperController;
+use RustServerWiper\Models\AnnouncementDelivery;
 use RustServerWiper\Models\Preset;
+use RustServerWiper\Models\Restoration;
 use RustServerWiper\Models\Run;
 use RustServerWiper\Models\Wipe;
 use RustServerWiper\Models\WipeMap;
@@ -30,6 +32,83 @@ test('one minute ahead in Phoenix is accepted independently of PHP default timez
         Carbon::setTestNow();
     }
 });
+foreach (['America/Phoenix', 'Europe/Paris'] as $panelZone) {
+    test('saved Phoenix 11:56 PM stays correct with panel timezone '.$panelZone, function () use ($panelZone) {
+        resetRuns();
+        $original = date_default_timezone_get();
+        $appZone = config('app.timezone');
+        try {
+            config(['app.timezone' => $panelZone]);
+            date_default_timezone_set($panelZone);
+            Carbon::setTestNow(Carbon::parse('2026-10-15T06:55:00Z'));
+            $gateway = new FakeGateway;
+            $controller = new WiperController($gateway, new WipeEngine($gateway));
+            $response = $controller->store(adminRequest(input(['timezone' => 'America/Phoenix', 'time' => '2026-10-14T23:56'])), Server::query()->findOrFail(1))->getData(true);
+            $wipe = Wipe::query()->findOrFail($response['id']);
+            eq($wipe->getRawOriginal('next_run_at'), '2026-10-15 06:56:00');
+            eq($wipe->next_run_at->timestamp, 1792047360);
+            eq($wipe->next_run_at->setTimezone('America/Phoenix')->format('Y-m-d H:i'), '2026-10-14 23:56');
+            eq($response['next_run_at'], '2026-10-15T06:56:00.000000Z');
+            $overview = $controller->index(adminRequest(), Server::query()->findOrFail(1))->getData(true);
+            $saved = array_values(array_filter($overview['wipes'], fn ($row) => $row['id'] === $wipe->id))[0];
+            eq($saved['next_run_at'], $response['next_run_at']);
+            eq($overview['calendar']['events'][0]['at'], '2026-10-15T06:56:00+00:00');
+        } finally {
+            date_default_timezone_set($original);
+            config(['app.timezone' => $appZone]);
+            Carbon::setTestNow();
+        }
+    });
+}
+
+test('operational timestamps and offset inputs use UTC independently of panel timezone', function () {
+    $original = date_default_timezone_get();
+    try {
+        date_default_timezone_set('America/Phoenix');
+        foreach ([Wipe::class => ['next_run_at'], Run::class => ['due_at', 'not_before', 'started_at', 'finished_at'], Restoration::class => ['finished_at'], AnnouncementDelivery::class => ['expires_at']] as $class => $fields) {
+            foreach ([...$fields, 'created_at', 'updated_at'] as $field) {
+                $model = new $class;
+                $model->setRawAttributes([$field => '2026-10-15 06:56:00']);
+                eq($model->$field->timestamp, 1792047360);
+                eq($model->toArray()[$field], '2026-10-15T06:56:00.000000Z');
+                $model->$field = new DateTimeImmutable('2026-10-14T23:56:00-07:00');
+                eq($model->getAttributes()[$field], '2026-10-15 06:56:00');
+                $model->$field = null;
+                eq($model->$field, null);
+            }
+        }
+    } finally {
+        date_default_timezone_set($original);
+    }
+});
+
+test('Phoenix schedule executes at the saved instant with a Phoenix panel timezone', function () {
+    resetRuns();
+    $original = date_default_timezone_get();
+    $appZone = config('app.timezone');
+    try {
+        config(['app.timezone' => 'America/Phoenix']);
+        date_default_timezone_set('America/Phoenix');
+        Carbon::setTestNow(Carbon::parse('2026-10-15T06:55:00Z'));
+        $gateway = new FakeGateway;
+        $controller = new WiperController($gateway, new WipeEngine($gateway));
+        $data = $controller->store(adminRequest(input(['timezone' => 'America/Phoenix', 'time' => '2026-10-14T23:56'])), Server::query()->findOrFail(1))->getData(true);
+        eq(tick($gateway), 0);
+        eq(Run::query()->count(), 0);
+        Carbon::setTestNow(Carbon::parse('2026-10-15T06:56:00Z'));
+        eq(tick($gateway), 0);
+        $run = Run::query()->where('wipe_id', $data['id'])->firstOrFail();
+        eq($run->due_at->timestamp, 1792047360);
+        eq($run->status, 'completed');
+        eq($run->getRawOriginal('created_at'), '2026-10-15 06:56:00');
+        eq(Wipe::query()->findOrFail($data['id'])->next_run_at, null);
+    } finally {
+        date_default_timezone_set($original);
+        config(['app.timezone' => $appZone]);
+        Carbon::setTestNow();
+    }
+});
+
 test('past-time validation explains the timezone and server time', function () {
     Carbon::setTestNow('2026-10-14 21:20:30 UTC');
     try {
@@ -187,7 +266,6 @@ test('read-only users cannot import, export, skip or run health checks', functio
     raises(fn () => (new WiperController($g, new WipeEngine($g)))->skip(request([], false), $server, 1));
 });
 Carbon::setTestNow();
-
 
 test('configuration limits roll back records created earlier in the transaction', function () {
     resetRuns();

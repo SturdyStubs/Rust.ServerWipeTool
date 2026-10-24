@@ -2,7 +2,7 @@
   "$schema": "./node_modules/@pterodactyl/sdk/manifest.schema.json",
   "id": "rust-server-wiper",
   "name": "Rust Server Wiper",
-  "version": "2.3.0-beta.1",
+  "version": "2.3.1-beta.1",
   "description": "Scheduled Rust wipes, map rotation, announcements, deletion previews and run history.",
   "icon": "calendar-clock",
   "requires": {
@@ -11,7 +11,9 @@
     "php": ">=8.3 <9.0"
   },
   "provider": "RustServerWiper\\WiperProvider",
-  "autoload": { "RustServerWiper\\": "src" },
+  "autoload": {
+    "RustServerWiper\\": "src"
+  },
   "ui": {
     "entry": "dist/client.js",
     "mode": "native",
@@ -21,7 +23,10 @@
         "id": "wipes",
         "area": "server",
         "path": "rust-wipes",
-        "nav": { "label": "Rust Wipes", "icon": "calendar-clock" },
+        "nav": {
+          "label": "Rust Wipes",
+          "icon": "calendar-clock"
+        },
         "permission": [
           "ext.rust-server-wiper.manage",
           "ext.rust-server-wiper.view",
@@ -30,13 +35,18 @@
           "ext.rust-server-wiper.restore",
           "ext.rust-server-wiper.configure"
         ],
-        "when": { "runtime": true }
+        "when": {
+          "runtime": true
+        }
       },
       {
         "id": "admin-wipes",
         "area": "admin",
         "path": "rust-wipes",
-        "nav": { "label": "Rust Wipes", "icon": "calendar-clock" }
+        "nav": {
+          "label": "Rust Wipes",
+          "icon": "calendar-clock"
+        }
       }
     ]
   }
